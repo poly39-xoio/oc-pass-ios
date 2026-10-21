@@ -44,6 +44,8 @@ final class AppModel: ObservableObject {
                 currentGateway = Gateway(name: url.host ?? "gateway", url: url, lastSeen: Date())
                 state = .ready
                 await loadSessions()
+            } catch GatewayClient.ClientError.pairingRequired(let id) {
+                state = .pairing(id)
             } catch {
                 state = .failed(error.localizedDescription)
             }

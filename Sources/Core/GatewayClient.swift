@@ -1,68 +1,109 @@
 import Foundation
 
-/// 與 OpenClaw Gateway 的原生 WebSocket 連線。
-/// 協議:JSON 文字幀;{type:"req",id,method,params} ↔ {type:"res",id,ok,payload}
-/// 事件:{type:"event",event,payload}
-actor GatewayClient {
+/// OpenClaw Gateway WebSocket client（協議 v4 + ed25519 裝置身份）
+final class GatewayClient {
+    enum ClientError: LocalizedError {
+        case notConnected, challengeTimeout, pairingRequired(String), server(String)
+        var errorDescription: String? {
+            switch self {
+            case .notConnected: return "尚未連線"
+            case .challengeTimeout: return "Gateway 沒有回應 challenge"
+            case .pairingRequired(let id): return "需要配對核准:\(id)"
+            case .server(let m): return m
+            }
+        }
+    }
+
+    private let identity = DeviceIdentity.loadOrCreate()
     private var task: URLSessionWebSocketTask?
     private var pending: [String: CheckedContinuation<Any?, Error>] = [:]
+    private var challengeWaiter: CheckedContinuation<String, Error>?
     private var eventHandler: ((String, Any?) -> Void)?
     private(set) var isOpen = false
 
-    func onEvent(_ handler: @escaping (String, Any?) -> Void) { eventHandler = handler }
+    func onEvent(_ h: @escaping (String, Any?) -> Void) { eventHandler = h }
 
     func connect(url: URL, token: String) async throws {
-        let session = URLSession(configuration: .default)
-        let t = session.webSocketTask(with: url)
-        task = t
-        t.resume()
-        isOpen = true
-        listen()
-        // 1) 等 challenge
-        // 2) 送 connect(含 auth token + device identity)
-        // TODO(spike): device key 產生與簽章;目前先送 token 認證
-        _ = try await request("connect", ["auth": ["token": token], "role": "operator"])
+        let t = URLSession(configuration: .default).webSocketTask(with: url)
+        task = t; t.resume(); isOpen = true
+        receiveLoop()
+
+        let nonce = try await waitForChallenge()
+        let signedAt = Int64(Date().timeIntervalSince1970 * 1000)
+        let clientId = "openclaw-ios", mode = "ui", role = "operator"
+        let scopes = ["operator.admin"], platform = "ios", family = "phone"
+        let payload = DeviceIdentity.payloadV3(deviceId: identity.deviceId, clientId: clientId,
+                                              clientMode: mode, role: role, scopes: scopes,
+                                              signedAt: signedAt, token: token, nonce: nonce,
+                                              platform: platform, deviceFamily: family)
+        guard let signature = identity.sign(payload) else { throw ClientError.server("簽章失敗") }
+
+        let params: [String: Any] = [
+            "minProtocol": 4, "maxProtocol": 4,
+            "client": ["id": clientId, "displayName": "OC Pass", "version": "0.1.0",
+                       "platform": platform, "deviceFamily": family, "mode": mode,
+                       "instanceId": UUID().uuidString],
+            "caps": [], "auth": ["token": token], "role": role, "scopes": scopes,
+            "device": ["id": identity.deviceId, "publicKey": identity.publicKeyBase64URL,
+                       "signature": signature, "signedAt": signedAt, "nonce": nonce]
+        ]
+        _ = try await request("connect", params)
     }
 
     func disconnect() {
         task?.cancel(with: .goingAway, reason: nil)
-        task = nil
-        isOpen = false
+        task = nil; isOpen = false
+        pending.values.forEach { $0.resume(throwing: ClientError.notConnected) }
+        pending.removeAll()
     }
 
     func request(_ method: String, _ params: [String: Any] = [:]) async throws -> Any? {
-        guard let task else { throw URLError(.notConnectedToInternet) }
+        guard let task, isOpen else { throw ClientError.notConnected }
         let id = UUID().uuidString
-        let frame: [String: Any] = ["type": "req", "id": id, "method": method, "params": params]
-        let data = try JSONSerialization.data(withJSONObject: frame)
+        let data = try JSONSerialization.data(withJSONObject: ["type": "req", "id": id, "method": method, "params": params])
         return try await withCheckedThrowingContinuation { cont in
             pending[id] = cont
             task.send(.data(data)) { err in
-                if let err { Task { await self.fail(id, err) } }
+                if let err { self.finish(id, .failure(err)) }
             }
         }
     }
 
-    private func fail(_ id: String, _ error: Error) {
-        pending.removeValue(forKey: id)?.resume(throwing: error)
+    // MARK: - internals
+
+    private func finish(_ id: String, _ result: Result<Any?, Error>) {
+        guard let c = pending.removeValue(forKey: id) else { return }
+        switch result {
+        case .success(let v): c.resume(returning: v)
+        case .failure(let e): c.resume(throwing: e)
+        }
     }
 
-    private func listen() {
+    private func waitForChallenge() async throws -> String {
+        try await withCheckedThrowingContinuation { cont in
+            challengeWaiter = cont
+            DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in
+                guard let self, let c = self.challengeWaiter else { return }
+                self.challengeWaiter = nil
+                c.resume(throwing: ClientError.challengeTimeout)
+            }
+        }
+    }
+
+    private func receiveLoop() {
         task?.receive { [weak self] result in
             guard let self else { return }
-            Task {
-                switch result {
-                case .failure(let err):
-                    await self.handleClose(err)
-                case .success(let message):
-                    await self.handle(message)
-                    await self.listenAgain()
-                }
+            switch result {
+            case .failure(let err):
+                self.isOpen = false
+                self.pending.values.forEach { $0.resume(throwing: err) }
+                self.pending.removeAll()
+            case .success(let message):
+                self.handle(message)
+                self.receiveLoop()
             }
         }
     }
-
-    private func listenAgain() { listen() }
 
     private func handle(_ message: URLSessionWebSocketTask.Message) {
         let data: Data?
@@ -75,18 +116,32 @@ actor GatewayClient {
               let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let type = obj["type"] as? String else { return }
 
-        if type == "res", let id = obj["id"] as? String {
-            let cont = pending.removeValue(forKey: id)
-            if obj["ok"] as? Bool == true { cont?.resume(returning: obj["payload"]) }
-            else { cont?.resume(throwing: NSError(domain: "gateway", code: 1, userInfo: [NSLocalizedDescriptionKey: "\(obj["error"] ?? "request failed")"])) }
-        } else if type == "event" {
-            eventHandler?(obj["event"] as? String ?? "", obj["payload"])
+        if type == "event" {
+            let name = obj["event"] as? String ?? ""
+            if name == "connect.challenge",
+               let payload = obj["payload"] as? [String: Any],
+               let nonce = payload["nonce"] as? String,
+               let waiter = challengeWaiter {
+                challengeWaiter = nil
+                waiter.resume(returning: nonce)
+            } else {
+                eventHandler?(name, obj["payload"])
+            }
+            return
         }
-    }
 
-    private func handleClose(_ error: Error) {
-        isOpen = false
-        pending.values.forEach { $0.resume(throwing: error) }
-        pending.removeAll()
+        if type == "res", let id = obj["id"] as? String {
+            if obj["ok"] as? Bool == true {
+                finish(id, .success(obj["payload"]))
+            } else {
+                let err = obj["error"] as? [String: Any] ?? [:]
+                let details = err["details"] as? [String: Any] ?? [:]
+                if let requestId = details["requestId"] as? String {
+                    finish(id, .failure(ClientError.pairingRequired(requestId)))
+                } else {
+                    finish(id, .failure(ClientError.server(err["message"] as? String ?? "request failed")))
+                }
+            }
+        }
     }
 }
