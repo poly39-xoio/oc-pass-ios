@@ -2,7 +2,7 @@ name: iOS Build
 
 on:
   push:
-    branches: [main]
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -14,53 +14,17 @@ jobs:
       - name: Install XcodeGen
         run: brew install xcodegen
 
-      - name: Generate Xcode project
+      - name: Generate project
         run: xcodegen generate
 
-      - name: Build (simulator, no signing)
+      - name: Build for simulator
         run: |
-          xcodebuild -project OpenClawRemote.xcodeproj \
-            -scheme OpenClawRemote \
+          set -o pipefail
+          xcodebuild \
+            -project OCPass.xcodeproj \
+            -scheme OCPass \
             -sdk iphonesimulator \
             -configuration Debug \
             -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO \
-            build | xcbeautify || xcodebuild -project OpenClawRemote.xcodeproj -scheme OpenClawRemote -sdk iphonesimulator -configuration Debug CODE_SIGNING_ALLOWED=NO build
-
-  # 上傳 TestFlight 需在 repo secrets 設定:
-  #   ASC_KEY_ID / ASC_ISSUER_ID / ASC_KEY_P8 / TEAM_ID
-  archive:
-    if: github.event_name == 'workflow_dispatch'
-    runs-on: macos-14
-    steps:
-      - uses: actions/checkout@v4
-      - run: brew install xcodegen
-      - run: xcodegen generate
-      - name: Import signing key
-        if: ${{ secrets.ASC_KEY_P8 != '' }}
-        run: |
-          mkdir -p ~/private_keys
-          echo "${{ secrets.ASC_KEY_P8 }}" > ~/private_keys/AuthKey.p8
-      - name: Archive
-        if: ${{ secrets.ASC_KEY_P8 != '' }}
-        run: |
-          xcodebuild -project OpenClawRemote.xcodeproj -scheme OpenClawRemote \
-            -sdk iphoneos -configuration Release \
-            -archivePath build/OpenClawRemote.xcarchive \
-            -allowProvisioningUpdates \
-            DEVELOPMENT_TEAM=${{ secrets.TEAM_ID }} \
-            archive
-      - name: Export & Upload
-        if: ${{ secrets.ASC_KEY_P8 != '' }}
-        run: |
-          cat > ExportOptions.plist <<PLIST
-          <?xml version="1.0" encoding="UTF-8"?>
-          <plist version="1.0"><dict>
-            <key>method</key><string>app-store-connect</string>
-            <key>teamID</key><string>${{ secrets.TEAM_ID }}</string>
-            <key>uploadSymbols</key><true/>
-          </dict></plist>
-          PLIST
-          xcodebuild -exportArchive -archivePath build/OpenClawRemote.xcarchive \
-            -exportOptionsPlist ExportOptions.plist -exportPath build/export \
-            -allowProvisioningUpdates
+            build
