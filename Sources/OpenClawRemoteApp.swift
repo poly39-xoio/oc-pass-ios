@@ -33,5 +33,11 @@ struct RootView: View {
         .sheet(isPresented: $model.showSettings) {
             SettingsView()
         }
+        .sheet(isPresented: $model.showSessions) {
+            SessionListView()
+        }
+        .onOpenURL { url in
+            model.connect(pairingCode: url.absoluteString)
+        }
     }
 }

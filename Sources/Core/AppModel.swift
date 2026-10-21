@@ -5,52 +5,48 @@ import SwiftUI
 final class AppModel: ObservableObject {
     @Published var state: ConnectionState = .idle
     @Published var messages: [ChatMessage] = []
-    @Published var sessions: [ChatSession] = []
+    @Published var sessions: [GatewaySession] = []
+    @Published var currentSession: GatewaySession?
     @Published var showScanner = false
     @Published var showSettings = false
+    @Published var showSessions = false
     @Published var isDemo = false
+    @Published var streaming = false
 
-    var isConnected: Bool {
-        if case .ready = state { return true }
-        return false
-    }
+    var isConnected: Bool { if case .ready = state { return true }; return false }
 
     private let client = GatewayClient()
     private var currentGateway: Gateway?
-    private var pendingCode = ""
+    private var streamingMessageId: UUID?
+
+    init() {
+        client.onEvent { [weak self] name, payload in
+            Task { @MainActor in self?.handle(event: name, payload: payload) }
+        }
+    }
 
     // MARK: - Connect
 
-    private func query(_ name: String) -> String? {
-        guard let comps = URLComponents(string: pendingCode) else { return nil }
-        return comps.queryItems?.first(where: { $0.name == name })?.value
-    }
-
     func connect(pairingCode: String) {
-        pendingCode = pairingCode
-        // pairingCode 格式: openclaw://pair?url=wss%3A%2F%2F...&token=...
         guard let comps = URLComponents(string: pairingCode),
               let urlStr = comps.queryItems?.first(where: { $0.name == "url" })?.value,
-              let token = comps.queryItems?.first(where: { $0.name == "token" })?.value,
+              let token = *** { $0.name == "token" })?.value,
               let url = URL(string: urlStr) else {
             state = .failed("QR 內容無法解析")
             return
         }
-        connect(url: url, token: token)
+        connect(url: url, token: ***)
     }
 
-    func connect(url: URL, token: String) {
+    func connect(url: URL, token: ***) {
         state = .connecting
         Task {
             do {
                 state = .authenticating
-                try await client.connect(url: url, token: token)
-                await client.onEvent { [weak self] event, payload in
-                    Task { @MainActor in self?.handle(event: event, payload: payload) }
-                }
+                try await client.connect(url: url, token: ***)
                 currentGateway = Gateway(name: url.host ?? "gateway", url: url, lastSeen: Date())
                 state = .ready
-                await loadSessions()
+                await refreshSessions()
             } catch GatewayClient.ClientError.pairingRequired(let id) {
                 state = .pairing(id)
             } catch {
@@ -60,26 +56,101 @@ final class AppModel: ObservableObject {
     }
 
     func disconnect() {
-        Task { await client.disconnect() }
+        client.disconnect()
         state = .idle
         messages = []
+        sessions = []
+        currentSession = nil
+    }
+
+    // MARK: - Sessions
+
+    func refreshSessions() async {
+        do {
+            let list = try await client.listSessions()
+            sessions = list
+            if currentSession == nil, let first = list.first { select(first) }
+        } catch {
+            state = .failed(error.localizedDescription)
+        }
+    }
+
+    func select(_ session: GatewaySession) {
+        currentSession = session
+        messages = []
+        Task {
+            do {
+                let history = try await client.history(sessionKey: session.id)
+                messages = history
+            } catch {
+                messages = [ChatMessage(role: .system, text: "讀取歷史失敗:\(error.localizedDescription)")]
+            }
+        }
     }
 
     // MARK: - Chat
 
     func send(_ text: String) {
-        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-        var msg = ChatMessage(role: .user, text: text)
-        msg.pending = true
-        messages.append(msg)
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, let session = currentSession else { return }
+        messages.append(ChatMessage(role: .user, text: trimmed))
+        streaming = true
+        var assistant = ChatMessage(role: .assistant, text: "", pending: true)
+        streamingMessageId = assistant.id
+        messages.append(assistant)
+
         Task {
             do {
-                _ = try await client.request("chat.send", ["text": text])
-                if let i = messages.firstIndex(where: { $0.id == msg.id }) { messages[i].pending = false }
+                _ = try await client.send(sessionKey: session.id, message: trimmed)
             } catch {
-                if let i = messages.firstIndex(where: { $0.id == msg.id }) { messages[i].pending = false }
-                messages.append(ChatMessage(role: .system, text: "送出失敗:\(error.localizedDescription)"))
+                streaming = false
+                streamingMessageId = nil
+                if let i = messages.firstIndex(where: { $0.id == assistant.id }) {
+                    messages[i].pending = false
+                    messages[i].text = "送出失敗:\(error.localizedDescription)"
+                }
             }
+        }
+        _ = assistant
+        assistant.text = ""
+    }
+
+    // MARK: - Event stream
+
+    private func handle(event: String, payload: Any?) {
+        guard let dict = payload as? [String: Any] else { return }
+        let stream = dict["stream"] as? String ?? ""
+        let data = dict["data"] as? [String: Any] ?? [:]
+
+        // 助手文字(逐步)
+        if event == "agent", stream == "assistant" || stream == "message" || stream == "completion" {
+            let chunk = (data["delta"] as? String) ?? (data["text"] as? String) ?? ""
+            guard !chunk.isEmpty else { return }
+            appendAssistant(chunk)
+            return
+        }
+        // 執行結束
+        if event == "agent", stream == "lifecycle" {
+            let phase = data["phase"] as? String ?? ""
+            if phase == "completed" || phase == "failed" || phase == "cancelled" {
+                streaming = false
+                if let id = streamingMessageId, let i = messages.firstIndex(where: { $0.id == id }) {
+                    messages[i].pending = false
+                }
+                streamingMessageId = nil
+            }
+        }
+    }
+
+    private func appendAssistant(_ chunk: String) {
+        if let id = streamingMessageId, let i = messages.firstIndex(where: { $0.id == id }) {
+            messages[i].text += chunk
+            messages[i].pending = false
+        } else {
+            var msg = ChatMessage(role: .assistant, text: chunk)
+            msg.pending = false
+            streamingMessageId = msg.id
+            messages.append(msg)
         }
     }
 
@@ -88,16 +159,8 @@ final class AppModel: ObservableObject {
     func startDemo() {
         isDemo = true
         state = .ready
-        sessions = [ChatSession(id: "demo", title: "Demo session", updatedAt: Date())]
+        sessions = [GatewaySession(id: "demo", sessionId: "demo", title: "Demo session", updatedAt: Date(), unread: 0)]
+        currentSession = sessions.first
         messages = DemoData.messages
-    }
-
-    private func loadSessions() async {
-        // TODO: 依 gateway 實際 method 名稱調整
-        sessions = []
-    }
-
-    private func handle(event: String, payload: Any?) {
-        // TODO: 依事件類型更新 messages(session.message / run.progress ...)
     }
 }

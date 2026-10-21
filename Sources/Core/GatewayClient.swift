@@ -69,6 +69,39 @@ final class GatewayClient {
         }
     }
 
+
+    // MARK: - High level API
+
+    func listSessions(limit: Int = 50) async throws -> [GatewaySession] {
+        let payload = try await request("sessions.list", ["limit": limit])
+        let dict = payload as? [String: Any] ?? [:]
+        let raw = (dict["sessions"] as? [[String: Any]]) ?? (dict["items"] as? [[String: Any]]) ?? []
+        return raw.compactMap(GatewaySession.parse)
+    }
+
+    func history(sessionKey: String, limit: Int = 50) async throws -> [ChatMessage] {
+        let payload = try await request("chat.history", ["sessionKey": sessionKey, "limit": limit])
+        let dict = payload as? [String: Any] ?? [:]
+        let raw = (dict["messages"] as? [[String: Any]]) ?? []
+        return raw.compactMap { m in
+            let role = (m["role"] as? String) ?? (m["type"] as? String) ?? "assistant"
+            let text = (m["text"] as? String) ?? (m["content"] as? String) ?? ""
+            guard !text.isEmpty else { return nil }
+            return ChatMessage(role: role == "user" ? .user : (role == "system" ? .system : .assistant), text: text)
+        }
+    }
+
+    @discardableResult
+    func send(sessionKey: String, message: String) async throws -> SendResult {
+        let payload = try await request("chat.send", [
+            "sessionKey": sessionKey,
+            "message": message,
+            "idempotencyKey": UUID().uuidString
+        ])
+        let dict = payload as? [String: Any] ?? [:]
+        return SendResult(runId: dict["runId"] as? String ?? "")
+    }
+
     // MARK: - internals
 
     private func finish(_ id: String, _ result: Result<Any?, Error>) {

@@ -8,9 +8,13 @@ struct ChatView: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("OpenClaw").font(.headline)
+                Button { model.showSessions = true } label: {
+                    Image(systemName: "list.bullet")
+                }
+                Text(model.currentSession?.title ?? "OpenClaw").font(.headline).lineLimit(1)
                 Spacer()
                 if model.isDemo { Text("DEMO").font(.caption2).padding(4).background(.orange).cornerRadius(4) }
+                if model.streaming { ProgressView().controlSize(.small) }
                 Button { model.showSettings = true } label: { Image(systemName: "gearshape") }
             }
             .padding()
