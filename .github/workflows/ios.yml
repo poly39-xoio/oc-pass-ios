@@ -10,13 +10,10 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
-
       - name: Install XcodeGen
         run: brew install xcodegen
-
       - name: Generate project
         run: xcodegen generate
-
       - name: Build for simulator
         run: |
           set -o pipefail
@@ -28,3 +25,62 @@ jobs:
             -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO \
             build
+
+  archive:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate project
+        run: xcodegen generate
+
+      - name: Prepare App Store Connect key
+        run: |
+          mkdir -p ~/private_keys
+          printf '%s' "${{ secrets.ASC_KEY_P8 }}" > ~/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8
+          chmod 600 ~/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8
+
+      - name: Archive
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project OCPass.xcodeproj \
+            -scheme OCPass \
+            -sdk iphoneos \
+            -configuration Release \
+            -archivePath build/OCPass.xcarchive \
+            -allowProvisioningUpdates \
+            DEVELOPMENT_TEAM=${{ secrets.TEAM_ID }} \
+            archive
+
+      - name: Export IPA
+        run: |
+          cat > ExportOptions.plist <<'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>teamID</key><string>__TEAM_ID__</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>uploadSymbols</key><true/>
+          </dict>
+          </plist>
+          PLIST
+          sed -i '' "s/__TEAM_ID__/${{ secrets.TEAM_ID }}/" ExportOptions.plist
+          xcodebuild -exportArchive \
+            -archivePath build/OCPass.xcarchive \
+            -exportOptionsPlist ExportOptions.plist \
+            -exportPath build/export \
+            -allowProvisioningUpdates
+
+      - name: Upload to TestFlight
+        run: |
+          xcrun altool --upload-app \
+            -f build/export/OCPass.ipa \
+            -t ios \
+            --apiKey ${{ secrets.ASC_KEY_ID }} \
+            --apiIssuer ${{ secrets.ASC_ISSUER_ID }} \
+            --verbose
