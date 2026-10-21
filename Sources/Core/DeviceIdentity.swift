@@ -1,6 +1,8 @@
 import Foundation
 import CryptoKit
 
+typealias TokenString = String
+
 /// ed25519 裝置身份(與 gateway 協議一致)
 /// deviceId = sha256(raw public key) hex
 /// 簽章內容 v3 = "v3|deviceId|clientId|clientMode|role|scopes|signedAt|token|nonce|platform|deviceFamily"
@@ -28,7 +30,7 @@ struct DeviceIdentity {
     var publicKeyBase64URL: String { publicKeyRaw.base64URLEncodedString() }
 
     static func payloadV3(deviceId: String, clientId: String, clientMode: String, role: String,
-                          scopes: [String], signedAt: Int64, token: ***, nonce: String,
+                          scopes: [String], signedAt: Int64, token: TokenString, nonce: String,
                           platform: String, deviceFamily: String) -> String {
         [ "v3", deviceId, clientId, clientMode, role, scopes.joined(separator: ","),
           String(signedAt), token, nonce,

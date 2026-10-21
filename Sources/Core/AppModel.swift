@@ -17,10 +17,17 @@ final class AppModel: ObservableObject {
 
     private let client = GatewayClient()
     private var currentGateway: Gateway?
+    private var pendingCode = ""
 
     // MARK: - Connect
 
+    private func query(_ name: String) -> String? {
+        guard let comps = URLComponents(string: pendingCode) else { return nil }
+        return comps.queryItems?.first(where: { $0.name == name })?.value
+    }
+
     func connect(pairingCode: String) {
+        pendingCode = pairingCode
         // pairingCode 格式: openclaw://pair?url=wss%3A%2F%2F...&token=...
         guard let comps = URLComponents(string: pairingCode),
               let urlStr = comps.queryItems?.first(where: { $0.name == "url" })?.value,
