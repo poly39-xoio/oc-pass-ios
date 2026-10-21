@@ -77,7 +77,10 @@ jobs:
             -archivePath build/OCPass.xcarchive \
             -exportOptionsPlist ExportOptions.plist \
             -exportPath build/export \
-            -allowProvisioningUpdates
+            -allowProvisioningUpdates \
+            -authenticationKeyPath ~/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8 \
+            -authenticationKeyID ${{ secrets.ASC_KEY_ID }} \
+            -authenticationKeyIssuerID ${{ secrets.ASC_ISSUER_ID }}
 
       - name: Upload to TestFlight
         run: |
