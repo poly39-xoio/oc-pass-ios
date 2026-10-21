@@ -44,7 +44,7 @@ final class AppModel: ObservableObject {
         Task {
             do {
                 state = .authenticating
-                try await client.connect(url: url, token: TokenString)
+                try await client.connect(url: url, token: token)
                 currentGateway = Gateway(name: url.host ?? "gateway", url: url, lastSeen: Date())
                 state = .ready
                 await refreshSessions()
