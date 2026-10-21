@@ -1,7 +1,6 @@
 name: OCPass
 options:
   bundleIdPrefix: io.xoio
-  objectVersion: 56   # 相容 Xcode 15(xcodegen 新版預設 77 會讓 macos-14 runner 開不了)
   deploymentTarget:
     iOS: "17.0"
   createIntermediateGroups: true
