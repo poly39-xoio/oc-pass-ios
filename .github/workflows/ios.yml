@@ -48,10 +48,13 @@ jobs:
           xcodebuild \
             -project OCPass.xcodeproj \
             -scheme OCPass \
-            -sdk iphoneos \
             -configuration Release \
+            -destination 'generic/platform=iOS' \
             -archivePath build/OCPass.xcarchive \
             -allowProvisioningUpdates \
+            -authenticationKeyPath ~/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8 \
+            -authenticationKeyID ${{ secrets.ASC_KEY_ID }} \
+            -authenticationKeyIssuerID ${{ secrets.ASC_ISSUER_ID }} \
             DEVELOPMENT_TEAM=${{ secrets.TEAM_ID }} \
             archive
 
