@@ -35,4 +35,5 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.xoio.ocpass
         TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
