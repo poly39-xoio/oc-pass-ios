@@ -28,22 +28,23 @@ final class AppModel: ObservableObject {
     // MARK: - Connect
 
     func connect(pairingCode: String) {
-        guard let comps = URLComponents(string: pairingCode),
-              let urlStr = comps.queryItems?.first(where: { $0.name == "url" })?.value,
-              let token = *** { $0.name == "token" })?.value,
-              let url = URL(string: urlStr) else {
-            state = .failed("QR 內容無法解析")
-            return
+        guard let comps = URLComponents(string: pairingCode) else {
+            state = .failed("QR 內容無法解析"); return
         }
-        connect(url: url, token: ***)
+        let urlStr = comps.queryItems?.first(where: { $0.name == "url" })?.value
+        let tokenValue = comps.queryItems?.first(where: { $0.name == "token" })?.value
+        guard let urlStr, let url = URL(string: urlStr), let tokenValue else {
+            state = .failed("QR 內容無法解析"); return
+        }
+        connect(url: url, token: tokenValue)
     }
 
-    func connect(url: URL, token: ***) {
+    func connect(url: URL, token: TokenString) {
         state = .connecting
         Task {
             do {
                 state = .authenticating
-                try await client.connect(url: url, token: ***)
+                try await client.connect(url: url, token: TokenString)
                 currentGateway = Gateway(name: url.host ?? "gateway", url: url, lastSeen: Date())
                 state = .ready
                 await refreshSessions()
