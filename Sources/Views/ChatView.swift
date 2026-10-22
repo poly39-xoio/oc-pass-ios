@@ -3,6 +3,7 @@ import SwiftUI
 struct ChatView: View {
     @EnvironmentObject var model: AppModel
     @State private var draft = ""
+    @State private var inputHeight: CGFloat = 38
 
     var body: some View {
         VStack(spacing: 0) {
@@ -67,18 +68,17 @@ struct ChatView: View {
 
     private var inputBar: some View {
         HStack(alignment: .bottom, spacing: 8) {
-            TextField("訊息…", text: $draft, axis: .vertical)
-                .lineLimit(1...4)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
+            GrowingTextField(text: $draft, height: $inputHeight)
+                .frame(height: inputHeight)
+                .padding(.horizontal, 10)
                 .background(Color.secondary.opacity(0.12))
                 .cornerRadius(18)
-                .fixedSize(horizontal: false, vertical: true)
 
             Button {
                 let text = draft
                 guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
                 draft = ""                      // 先清空，避免送不出去時卡字
+                inputHeight = 38               // 立刻縮回單行高度
                 model.send(text)
             } label: {
                 Image(systemName: "arrow.up.circle.fill")
