@@ -6,14 +6,16 @@ struct ChatView: View {
     @State private var inputHeight: CGFloat = 38
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            if case .connecting = model.state { reconnectingBanner }
-            messageList
-            inputBar
-            bottomBar
+        ZStack {
+            Theme.background
+            VStack(spacing: 0) {
+                header
+                if case .connecting = model.state { reconnectingBanner }
+                messageList
+                inputBar
+                bottomBar
+            }
         }
-        .background(Color.black.opacity(0.02))
     }
 
     // MARK: - Header
@@ -21,22 +23,24 @@ struct ChatView: View {
     private var header: some View {
         HStack(spacing: 10) {
             Button { model.showSessions = true } label: {
-                Image(systemName: "list.bullet")
+                Image(systemName: "list.bullet").foregroundStyle(.white)
             }
-            Text(model.currentSession?.title ?? "OpenClaw")
-                .font(.headline)
+            Text(model.currentSession?.title ?? "OC Pass")
+                .font(Theme.ui(16, .bold))
+                .foregroundStyle(.white)
                 .lineLimit(1)
             Spacer()
             if model.isDemo {
                 Text("DEMO")
-                    .font(.caption2).padding(.horizontal, 6).padding(.vertical, 3)
-                    .background(Color.orange.opacity(0.85)).cornerRadius(5)
+                    .font(Theme.ui(10, .bold))
+                    .padding(.horizontal, 7).padding(.vertical, 3)
+                    .background(Theme.warn.opacity(0.9))
+                    .foregroundStyle(.white)
+                    .clipShape(Capsule())
             }
-            if model.streaming {
-                ProgressView().controlSize(.small)
-            }
+            if model.streaming { ProgressView().tint(.white).controlSize(.small) }
             Button { model.showSettings = true } label: {
-                Image(systemName: "gearshape")
+                Image(systemName: "gearshape").foregroundStyle(.white)
             }
         }
         .padding(.horizontal, 16)
@@ -45,12 +49,14 @@ struct ChatView: View {
 
     private var reconnectingBanner: some View {
         HStack(spacing: 8) {
-            ProgressView().controlSize(.small)
-            Text("連線中斷,正在重連…").font(.caption)
+            ProgressView().controlSize(.small).tint(.white)
+            Text("連線中斷,正在重連…")
+                .font(Theme.ui(12, .medium))
+                .foregroundStyle(.white)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 6)
-        .background(Color.orange.opacity(0.18))
+        .background(Theme.warn.opacity(0.85))
     }
 
     // MARK: - Messages
@@ -64,7 +70,7 @@ struct ChatView: View {
                     }
                 }
                 .padding(.horizontal, 14)
-                .padding(.vertical, 10)
+                .padding(.vertical, 12)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .onChange(of: model.messages.count) { _, _ in
@@ -82,18 +88,19 @@ struct ChatView: View {
             GrowingTextField(text: $draft, height: $inputHeight)
                 .frame(height: inputHeight)
                 .padding(.horizontal, 10)
-                .background(Color.secondary.opacity(0.12))
-                .cornerRadius(18)
+                .background(Theme.panel)
+                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
 
             Button {
                 let text = draft
                 guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-                draft = ""                      // 先清空，避免送不出去時卡字
-                inputHeight = 38               // 立刻縮回單行高度
+                draft = ""
+                inputHeight = 38
                 model.send(text)
             } label: {
                 Image(systemName: "arrow.up.circle.fill")
                     .font(.system(size: 30))
+                    .foregroundStyle(Theme.accent)
             }
             .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
@@ -116,20 +123,15 @@ struct ChatView: View {
             Button { model.showSettings = true } label: {
                 Label("設定", systemImage: "slider.horizontal.3")
             }
-            Spacer()
-            Button(role: .destructive) {
-                model.disconnect(); model.exitDemo()
-            } label: {
-                Label("中斷", systemImage: "xmark.circle")
-            }
         }
-        .font(.caption)
+        .font(Theme.ui(11, .semibold))
+        .foregroundStyle(.white.opacity(0.92))
         .padding(.horizontal, 18)
-        .padding(.vertical, 8)
-        .background(Color.secondary.opacity(0.08))
+        .padding(.vertical, 9)
+        .background(Theme.accent.opacity(0.92))
         .sheet(isPresented: $model.showConsole) {
             if let url = model.gatewayURL {
-                WebConsoleView(baseURL: url, token: model.gatewayToken)
+                WebConsoleView(baseURL: url, token: ***)
             } else {
                 Text("尚未連線").padding()
             }
@@ -139,17 +141,35 @@ struct ChatView: View {
 
 struct MessageBubble: View {
     let message: ChatMessage
+
     var body: some View {
         HStack {
             if message.role == .user { Spacer(minLength: 40) }
             Text(message.text)
+                .font(Theme.ui(15))
                 .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(message.role == .user ? Color.accentColor.opacity(0.85) : Color.secondary.opacity(0.16))
-                .foregroundStyle(message.role == .user ? .white : .primary)
-                .cornerRadius(14)
+                .padding(.vertical, 9)
+                .background(bubbleColor)
+                .foregroundStyle(textColor)
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 .textSelection(.enabled)
             if message.role != .user { Spacer(minLength: 40) }
+        }
+    }
+
+    private var bubbleColor: Color {
+        switch message.role {
+        case .user: return Theme.accent          // 深石板(白字)
+        case .assistant: return Theme.panel      // 淡霧藍(深字)
+        case .system: return Theme.warn.opacity(0.15)
+        }
+    }
+
+    private var textColor: Color {
+        switch message.role {
+        case .user: return .white
+        case .assistant: return Theme.ink
+        case .system: return Theme.warn
         }
     }
 }

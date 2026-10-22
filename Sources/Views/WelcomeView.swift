@@ -26,7 +26,7 @@ struct WelcomeView: View {
                     .foregroundStyle(.white)
                     .padding(.top, 14)
 
-                Text("dashboard")
+                Text("openclaw dashboard")
                     .font(Theme.ui(14, .medium))
                     .foregroundStyle(.white.opacity(0.78))
                     .padding(.top, 4)
@@ -60,7 +60,7 @@ struct WelcomeView: View {
                             )
                     }
 
-                    Button("先看 Demo") { model.startDemo() }
+                    Button("Demo") { model.startDemo() }
                         .font(Theme.ui(13, .semibold))
                         .foregroundStyle(.white.opacity(0.72))
                         .padding(.top, 4)
