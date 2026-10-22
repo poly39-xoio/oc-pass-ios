@@ -6,7 +6,7 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var url = "wss://xoio.io/oc"
     @State private var name = ""
-    @State private var token = ***)
+    @State private var token: TokenString = ""
     @State private var localError: String?
     @State private var showHelp = false
 
@@ -199,7 +199,7 @@ struct SettingsView: View {
         }
         let tk = token.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !tk.isEmpty else { localError = L("請貼上 Gateway token"); return }
-        model.connect(url: normalized, token: ***)
+        model.connect(url: normalized, token: tk)
     }
 
     /// 接受 xoio.io/oc、https://xoio.io/oc、wss://xoio.io/oc 三種寫法
