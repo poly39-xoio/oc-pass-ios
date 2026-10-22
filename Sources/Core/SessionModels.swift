@@ -7,6 +7,8 @@ struct GatewaySession: Identifiable, Equatable {
     let updatedAt: Date?
     let unread: Int
     let totalTokens: Int
+    let hasActiveRun: Bool
+    let activeRunIds: [String]
 
     static func parse(_ dict: [String: Any]) -> GatewaySession? {
         guard let key = dict["key"] as? String else { return nil }
@@ -18,7 +20,9 @@ struct GatewaySession: Identifiable, Equatable {
         return GatewaySession(id: key, sessionId: sid, title: name,
                               updatedAt: ts.map { Date(timeIntervalSince1970: $0 / 1000) },
                               unread: dict["unread"] as? Int ?? 0,
-                              totalTokens: (dict["totalTokens"] as? Int) ?? Int(dict["totalTokens"] as? Double ?? 0))
+                              totalTokens: (dict["totalTokens"] as? Int) ?? Int(dict["totalTokens"] as? Double ?? 0),
+                              hasActiveRun: dict["hasActiveRun"] as? Bool ?? false,
+                              activeRunIds: (dict["activeRunIds"] as? [String]) ?? [])
     }
 }
 

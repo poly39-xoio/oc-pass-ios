@@ -94,11 +94,11 @@ struct ChatView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 10) {
                     ForEach(model.messages) { m in
-                        if m.pending && m.text.isEmpty {
-                            HStack { TypingBubble(); Spacer(minLength: 40) }.id(m.id)
-                        } else {
-                            MessageBubble(message: m).id(m.id)
-                        }
+                        MessageBubble(message: m).id(m.id)
+                    }
+                    if model.awaitingReply {
+                        HStack { TypingBubble(); Spacer(minLength: 40) }
+                            .id("typing-indicator")
                     }
                 }
                 .padding(.horizontal, 14)
@@ -116,6 +116,9 @@ struct ChatView: View {
                 if let last = model.messages.last {
                     withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
                 }
+            }
+            .onChange(of: model.awaitingReply) { _, typing in
+                if typing { withAnimation { proxy.scrollTo("typing-indicator", anchor: .bottom) } }
             }
         }
     }

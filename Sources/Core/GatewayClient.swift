@@ -223,7 +223,8 @@ final class GatewayClient {
         guard !key.isEmpty else { throw ClientError.server("sessions.create 沒有回傳 session key") }
         return GatewaySession(id: key, sessionId: inner["sessionId"] as? String ?? key,
                               title: inner["displayName"] as? String ?? "新對話",
-                              updatedAt: Date(), unread: 0, totalTokens: 0)
+                              updatedAt: Date(), unread: 0, totalTokens: 0,
+                              hasActiveRun: false, activeRunIds: [])
     }
 
     /// WebSocket 層 ping,用來偵測「連線看起來還在、其實已經斷了」

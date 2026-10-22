@@ -12,6 +12,8 @@ final class AppModel: ObservableObject {
     @Published var showSessions = false
     @Published var isDemo = false
     @Published var streaming = false
+    /// 送出後到「真正拿到最終回覆」前都保持 true(三點一直閃)
+    @Published var awaitingReply = false
     @Published var showConsole = false
     @Published var gatewayURL: URL?
     @Published var gatewayToken: TokenString = ""
@@ -321,52 +323,69 @@ final class AppModel: ObservableObject {
         guard !(trimmed.isEmpty && attachments.isEmpty), let session = currentSession else { return }
         let shown = trimmed.isEmpty ? (attachments.count == 1 ? "[附件] \(attachments[0].name)" : "[附件] \(attachments.count) 個檔案") : trimmed
         messages.append(ChatMessage(role: .user, text: shown))
-        streaming = true
-        var assistant = ChatMessage(role: .assistant, text: "", pending: true)
-        streamingMessageId = assistant.id
-        messages.append(assistant)
         saveTranscript()
+        streaming = true
+        awaitingReply = true      // 三點持續閃到真正拿到最終回覆
+        streamingMessageId = nil
 
         Task {
             do {
-                _ = try await client.send(sessionKey: session.id, message: trimmed, attachments: attachments)
-                startHistoryPolling(sessionKey: session.id)
+                let res = try await client.send(sessionKey: session.id, message: trimmed, attachments: attachments)
+                startRunWatch(sessionKey: session.id, runId: res.runId)
             } catch {
                 streaming = false
-                streamingMessageId = nil
-                if let i = messages.firstIndex(where: { $0.id == assistant.id }) {
-                    messages[i].pending = false
-                    messages[i].text = "送出失敗:\(error.localizedDescription)"
-                }
+                awaitingReply = false
+                messages.append(ChatMessage(role: .system, text: "送出失敗:\(error.localizedDescription)"))
+                saveTranscript()
             }
         }
     }
 
-    /// 送出後每 1.5 秒抓一次歷史,直到看到助理回覆(最長 90 秒)
-    private func startHistoryPolling(sessionKey: String) {
+    /// 等這輪真的結束(不再有 active run)才收掉三點、換上最終回覆。
+    /// 有 hasActiveRun 就用它;沒有就退回「回覆文字穩定」的判斷。
+    private func startRunWatch(sessionKey: String, runId: String) {
         pollTask?.cancel()
         pollTask = Task { [weak self] in
             guard let self else { return }
-            for _ in 0..<60 {
+            var idleTicks = 0
+            var lastLen = -1
+            var stableTicks = 0
+            var sawActive = false
+
+            for _ in 0..<120 {                  // 最多約 3 分鐘
                 try? await Task.sleep(nanoseconds: 1_500_000_000)
                 if Task.isCancelled { return }
+
+                let list = (try? await self.client.listSessions()) ?? []
+                if let row = list.first(where: { $0.id == sessionKey }) {
+                    if row.hasActiveRun || row.activeRunIds.contains(runId) {
+                        sawActive = true
+                        idleTicks = 0
+                    } else {
+                        idleTicks += 1
+                    }
+                    if sawActive && idleTicks >= 1 { await self.finishRun(sessionKey); return }
+                }
+
+                // 後備:回覆長度連續兩次不變 → 視為完成
                 if let h = try? await self.client.history(sessionKey: sessionKey), !h.isEmpty {
-                    let hasAssistant = h.last?.role == .assistant
-                    await MainActor.run {
-                        if h.count >= self.messages.count || hasAssistant {
-                            self.messages = self.collapsed(h)
-                            self.saveTranscript()
-                        }
-                        if hasAssistant { self.streaming = false }
-                    }
-                    if hasAssistant {
-                        await MainActor.run { self.streaming = false }
-                        return
-                    }
+                    let len = h.reduce(0) { $0 + $1.text.count }
+                    if len == lastLen && len > 0 { stableTicks += 1 } else { stableTicks = 0 }
+                    lastLen = len
+                    if stableTicks >= 2 { await self.finishRun(sessionKey); return }
                 }
             }
-            await MainActor.run { self.streaming = false }
+            await self.finishRun(sessionKey)
         }
+    }
+
+    private func finishRun(_ sessionKey: String) async {
+        if let h = try? await client.history(sessionKey: sessionKey), !h.isEmpty {
+            messages = collapsed(h)
+            saveTranscript()
+        }
+        streaming = false
+        awaitingReply = false
     }
 
     // MARK: - Event stream
@@ -385,6 +404,7 @@ final class AppModel: ObservableObject {
             let phase = data["phase"] as? String ?? ""
             if phase == "completed" || phase == "failed" || phase == "cancelled" {
                 streaming = false
+                awaitingReply = false
                 streamingMessageId = nil
                 if let key = currentSession?.id {
                     Task {
