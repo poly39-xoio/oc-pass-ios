@@ -4,7 +4,7 @@ import WebKit
 /// 官方 Control UI 的 WebView 外殼(設定 / cron / activity / 節點 / 用量都在裡面)
 struct WebConsoleView: View {
     let baseURL: URL
-    let token: ***
+    let token: TokenString
     @Environment(\.dismiss) private var dismiss
     @State private var loading = true
 

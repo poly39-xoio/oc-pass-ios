@@ -14,7 +14,7 @@ final class AppModel: ObservableObject {
     @Published var streaming = false
     @Published var showConsole = false
     @Published var gatewayURL: URL?
-    @Published var gatewayToken: ***
+    @Published var gatewayToken: TokenString = ""
 
     var isConnected: Bool { if case .ready = state { return true }; return false }
 

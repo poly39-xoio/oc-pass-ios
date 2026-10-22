@@ -118,7 +118,7 @@ struct ChatView: View {
         .background(Color.secondary.opacity(0.08))
         .sheet(isPresented: $model.showConsole) {
             if let url = model.gatewayURL {
-                WebConsoleView(baseURL: url, token: ***)
+                WebConsoleView(baseURL: url, token: model.gatewayToken)
             } else {
                 Text("尚未連線").padding()
             }
