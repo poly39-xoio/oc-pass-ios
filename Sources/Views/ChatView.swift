@@ -225,7 +225,8 @@ struct ChatView: View {
             guard let item else { return }
             Task {
                 if let data = try? await item.loadTransferable(type: Data.self) {
-                    let att = Self.makeImageAttachment(data)
+                    // 壓縮放到背景執行,避免大圖卡住主執行緒被系統砍掉
+                    let att = await Task.detached { Self.makeImageAttachment(data) }.value
                     await MainActor.run {
                         if let att { pending.append(att) }
                         else { sizeWarning = L("無法讀取這個檔案") }
@@ -297,7 +298,7 @@ struct ChatView: View {
     private func loadFile(_ url: URL) {
         let access = url.startAccessingSecurityScopedResource()
         defer { if access { url.stopAccessingSecurityScopedResource() } }
-        guard let data = try? Data(contentsOf: url) else {
+        guard let data = try? Data(contentsOf: url, options: .mappedIfSafe) else {
             sizeWarning = L("無法讀取這個檔案"); return
         }
         if data.count > 18 * 1024 * 1024 {

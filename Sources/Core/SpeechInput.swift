@@ -13,6 +13,7 @@ final class SpeechInput: ObservableObject {
     private var request: SFSpeechAudioBufferRecognitionRequest?
     private var task: SFSpeechRecognitionTask?
     private let engine = AVAudioEngine()
+    private var tapInstalled = false
 
     func toggle() {
         if isRecording { stop() } else { start() }
@@ -48,10 +49,18 @@ final class SpeechInput: ObservableObject {
 
             let input = engine.inputNode
             let format = input.outputFormat(forBus: 0)
-            input.removeTap(onBus: 0)
+            guard format.channelCount > 0, format.sampleRate > 0 else {
+                self.error = Language.isEnglish ? "No microphone input available" : "找不到可用的麥克風"
+                return
+            }
+            if tapInstalled {
+                input.removeTap(onBus: 0)
+                tapInstalled = false
+            }
             input.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in
                 req.append(buffer)
             }
+            tapInstalled = true
             engine.prepare()
             try engine.start()
             isRecording = true
@@ -73,7 +82,10 @@ final class SpeechInput: ObservableObject {
 
     func stop() {
         engine.stop()
-        engine.inputNode.removeTap(onBus: 0)
+        if tapInstalled {
+            engine.inputNode.removeTap(onBus: 0)
+            tapInstalled = false
+        }
         request?.endAudio()
         task?.cancel()
         request = nil
