@@ -54,6 +54,8 @@ jobs:
             -destination 'generic/platform=iOS' \
             -archivePath build/OCPass.xcarchive \
             -allowProvisioningUpdates \
+            MARKETING_VERSION=1.0 \
+            CURRENT_PROJECT_VERSION=${{ github.run_number }} \
             -authenticationKeyPath ~/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8 \
             -authenticationKeyID ${{ secrets.ASC_KEY_ID }} \
             -authenticationKeyIssuerID ${{ secrets.ASC_ISSUER_ID }} \
@@ -80,6 +82,8 @@ jobs:
             -exportOptionsPlist ExportOptions.plist \
             -exportPath build/export \
             -allowProvisioningUpdates \
+            MARKETING_VERSION=1.0 \
+            CURRENT_PROJECT_VERSION=${{ github.run_number }} \
             -authenticationKeyPath ~/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8 \
             -authenticationKeyID ${{ secrets.ASC_KEY_ID }} \
             -authenticationKeyIssuerID ${{ secrets.ASC_ISSUER_ID }}
