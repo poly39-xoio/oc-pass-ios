@@ -4,42 +4,97 @@ struct WelcomeView: View {
     @EnvironmentObject var model: AppModel
 
     var body: some View {
-        VStack(spacing: 20) {
-            Spacer()
-            Text("OpenClaw")
-                .font(.system(size: 40, weight: .black))
-            Text("手機上的 agent 遙控器")
-                .foregroundStyle(.secondary)
+        ZStack {
+            Theme.background
 
-            Spacer()
+            VStack(spacing: 0) {
+                Spacer()
 
-            Button { model.showScanner = true } label: {
-                Label("掃描 QR 連線", systemImage: "qrcode.viewfinder")
-                    .frame(maxWidth: .infinity, minHeight: 52)
+                // Logo tile
+                Text("OC")
+                    .font(Theme.ui(26, .black))
+                    .foregroundStyle(Theme.panel)
+                    .frame(width: 86, height: 86)
+                    .background(
+                        LinearGradient(colors: [Theme.accentHi, Theme.accent], startPoint: .topLeading, endPoint: .bottomTrailing)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                    .shadow(color: Theme.ink.opacity(0.28), radius: 12, y: 8)
+
+                Text("OC Pass")
+                    .font(Theme.ui(30, .black))
+                    .foregroundStyle(.white)
+                    .padding(.top, 14)
+
+                Text("dashboard")
+                    .font(Theme.ui(14, .medium))
+                    .foregroundStyle(.white.opacity(0.78))
+                    .padding(.top, 4)
+                    .padding(.bottom, 26)
+
+                // Panel
+                VStack(spacing: 10) {
+                    Button {
+                        model.showScanner = true
+                    } label: {
+                        Text("掃描 QR 連線")
+                            .font(Theme.ui(16, .bold))
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity, minHeight: 52)
+                            .background(Theme.accent)
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    }
+
+                    Button {
+                        model.showSettings = true
+                    } label: {
+                        Text("手動輸入 gateway")
+                            .font(Theme.ui(16, .semibold))
+                            .foregroundStyle(Theme.ink)
+                            .frame(maxWidth: .infinity, minHeight: 52)
+                            .background(Theme.panel2)
+                            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .stroke(Theme.bg.opacity(0.35), lineWidth: 1)
+                            )
+                    }
+
+                    Button("先看 Demo") { model.startDemo() }
+                        .font(Theme.ui(13, .semibold))
+                        .foregroundStyle(.white.opacity(0.72))
+                        .padding(.top, 4)
+                }
+                .padding(18)
+                .background(Theme.panel)
+                .clipShape(RoundedRectangle(cornerRadius: Theme.radius, style: .continuous))
+                .shadow(color: Theme.ink.opacity(0.18), radius: 14, y: 10)
+
+                Spacer()
+
+                statusLine
+                    .padding(.bottom, 24)
             }
-            .buttonStyle(.borderedProminent)
-
-            Button("手動輸入 gateway") { model.showSettings = true }
-                .frame(maxWidth: .infinity, minHeight: 44)
-
-            Button("先看 Demo") { model.startDemo() }
-                .foregroundStyle(.secondary)
-
-            Spacer()
+            .padding(.horizontal, 30)
         }
-        .padding(24)
-        .overlay(alignment: .bottom) {
-            VStack(spacing: 6) {
-                if case .connecting = model.state { ProgressView("連線中…") }
-                if case .authenticating = model.state { ProgressView("認證中…") }
-                if case .pairing(let id) = model.state {
-                    Text("需要配對核准:\(id)").font(.footnote).foregroundStyle(.orange)
-                }
-                if case .failed(let msg) = model.state {
-                    Text(msg).font(.footnote).foregroundStyle(.red).multilineTextAlignment(.center)
-                }
+    }
+
+    @ViewBuilder
+    private var statusLine: some View {
+        VStack(spacing: 6) {
+            switch model.state {
+            case .connecting: ProgressView().tint(.white)
+            case .authenticating: ProgressView().tint(.white)
+            case .pairing(let id):
+                Text("需要配對核准:\(id)")
+                    .font(Theme.ui(12)).foregroundStyle(.white.opacity(0.85))
+            case .failed(let msg):
+                Text(msg)
+                    .font(Theme.ui(12)).foregroundStyle(Theme.warn)
+                    .multilineTextAlignment(.center)
+            default:
+                EmptyView()
             }
-            .padding(.bottom, 8)
         }
     }
 }

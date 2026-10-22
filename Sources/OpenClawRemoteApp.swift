@@ -8,7 +8,7 @@ struct OpenClawRemoteApp: App {
         WindowGroup {
             RootView()
                 .environmentObject(model)
-                .preferredColorScheme(.dark)
+                .preferredColorScheme(.light)
         }
     }
 }
