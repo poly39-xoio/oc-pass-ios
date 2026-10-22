@@ -48,6 +48,8 @@ jobs:
         env:
           DIST_P12_BASE64: ${{ secrets.DIST_P12_BASE64 }}
           DIST_P12_PW: ${{ secrets.DIST_P12_PW }}
+          PROFILE_BASE64: ${{ secrets.PROFILE_BASE64 }}
+          PROFILE_UUID: ${{ secrets.PROFILE_UUID }}
         run: |
           set -euo pipefail
           KC="$RUNNER_TEMP/build.keychain-db"
@@ -59,6 +61,9 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" "$KC" >/dev/null
           security list-keychains -d user -s "$KC" $(security list-keychains -d user | tr -d '"')
           security find-identity -v -p codesigning "$KC"
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          echo -n "$PROFILE_BASE64" | base64 --decode > "$HOME/Library/MobileDevice/Provisioning Profiles/$PROFILE_UUID.mobileprovision"
+          echo "profile installed: $PROFILE_UUID"
 
       - name: Archive
         run: |
@@ -69,13 +74,12 @@ jobs:
             -configuration Release \
             -destination 'generic/platform=iOS' \
             -archivePath build/OCPass.xcarchive \
-            -allowProvisioningUpdates \
             MARKETING_VERSION=1.0 \
             CURRENT_PROJECT_VERSION=${{ github.run_number }} \
-            -authenticationKeyPath ~/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8 \
-            -authenticationKeyID ${{ secrets.ASC_KEY_ID }} \
-            -authenticationKeyIssuerID ${{ secrets.ASC_ISSUER_ID }} \
             DEVELOPMENT_TEAM=${{ secrets.TEAM_ID }} \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            PROVISIONING_PROFILE_SPECIFIER="${{ secrets.PROFILE_NAME }}" \
             OTHER_CODE_SIGN_FLAGS="--keychain $RUNNER_TEMP/build.keychain-db" \
             archive
 
@@ -88,18 +92,20 @@ jobs:
           <dict>
             <key>method</key><string>app-store-connect</string>
             <key>teamID</key><string>__TEAM_ID__</string>
-            <key>signingStyle</key><string>automatic</string>
+            <key>signingStyle</key><string>manual</string>
+            <key>provisioningProfiles</key>
+            <dict><key>io.xoio.ocpass</key><string>__PROFILE_NAME__</string></dict>
             <key>uploadSymbols</key><true/>
           </dict>
           </plist>
           PLIST
           sed -i '' "s/__TEAM_ID__/${{ secrets.TEAM_ID }}/" ExportOptions.plist
+          sed -i '' "s/__PROFILE_NAME__/${{ secrets.PROFILE_NAME }}/" ExportOptions.plist
           xcodebuild -exportArchive \
             -archivePath build/OCPass.xcarchive \
             -exportOptionsPlist ExportOptions.plist \
             -exportPath build/export \
             OTHER_CODE_SIGN_FLAGS="--keychain $RUNNER_TEMP/build.keychain-db" \
-            -allowProvisioningUpdates \
             MARKETING_VERSION=1.0 \
             CURRENT_PROJECT_VERSION=${{ github.run_number }} \
             -authenticationKeyPath ~/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8 \
