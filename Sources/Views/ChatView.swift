@@ -70,7 +70,6 @@ struct ChatView: View {
                     .foregroundStyle(Theme.accent)
                     .clipShape(Capsule())
             }
-            if model.streaming { ProgressView().tint(.white).controlSize(.small) }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
