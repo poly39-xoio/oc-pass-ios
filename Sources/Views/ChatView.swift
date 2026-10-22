@@ -31,20 +31,15 @@ struct ChatView: View {
 
     private var header: some View {
         HStack(spacing: 10) {
-            Button { model.showSessions = true } label: {
-                Image(systemName: "list.bullet").foregroundStyle(.white)
-            }
-            VStack(alignment: .leading, spacing: 0) {
-                Text(model.currentSession?.title ?? "OC Pass")
+            VStack(alignment: .leading, spacing: 1) {
+                Text(model.displayName)
                     .font(Theme.ui(16, .bold))
                     .foregroundStyle(.white)
                     .lineLimit(1)
-                if let id = model.currentSession?.id {
-                    Text(shortKey(id))
-                        .font(Theme.ui(10))
-                        .foregroundStyle(.white.opacity(0.6))
-                        .lineLimit(1)
-                }
+                Text(model.currentSession?.title ?? "OC Pass")
+                    .font(Theme.ui(10))
+                    .foregroundStyle(.white.opacity(0.62))
+                    .lineLimit(1)
             }
             Spacer()
             if model.isDemo {
@@ -56,16 +51,9 @@ struct ChatView: View {
                     .clipShape(Capsule())
             }
             if model.streaming { ProgressView().tint(.white).controlSize(.small) }
-            Button { model.showSettings = true } label: {
-                Image(systemName: "gearshape").foregroundStyle(.white)
-            }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
-    }
-
-    private func shortKey(_ key: String) -> String {
-        key.hasPrefix("agent:main:") ? String(key.dropFirst("agent:main:".count)) : key
     }
 
     private var reconnectingBanner: some View {
@@ -158,7 +146,7 @@ struct ChatView: View {
                 .frame(height: inputHeight)
                 .padding(.horizontal, 10)
                 .background(Theme.panel)
-                .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
 
             Button {
                 sendNow()

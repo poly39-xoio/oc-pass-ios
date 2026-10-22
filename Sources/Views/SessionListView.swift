@@ -59,14 +59,6 @@ struct SessionListView: View {
             .navigationTitle("工作階段")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button {
-                        model.createSession()
-                        dismiss()
-                    } label: {
-                        Label("開新對話", systemImage: "plus.bubble")
-                    }
-                }
                 ToolbarItem(placement: .topBarTrailing) { Button("完成") { dismiss() } }
             }
         }

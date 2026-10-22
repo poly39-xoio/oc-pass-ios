@@ -23,11 +23,7 @@ struct RootView: View {
     var body: some View {
         Group {
             if model.isConnected {
-                if model.currentSession == nil {
-                    SessionPickerView()
-                } else {
-                    ChatView()
-                }
+                ChatView()
             } else {
                 WelcomeView()
             }

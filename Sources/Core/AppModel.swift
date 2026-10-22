@@ -17,6 +17,20 @@ final class AppModel: ObservableObject {
     @Published var gatewayToken: TokenString = ""
     @Published var creatingSession = false
     @Published var sessionError: String?
+    /// 使用者自己設定的名字(存在 UserDefaults),用來顯示「你是誰」而不是 Telegram 帳號
+    @Published var userName: String = UserDefaults.standard.string(forKey: "ocpass.userName") ?? ""
+
+    var displayName: String {
+        if isDemo { return userName.isEmpty ? "Demo" : userName }
+        if !userName.isEmpty { return userName }
+        return currentSession?.title ?? "OC Pass"
+    }
+
+    func setUserName(_ value: String) {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        userName = trimmed
+        UserDefaults.standard.set(trimmed, forKey: "ocpass.userName")
+    }
 
     var isConnected: Bool { if case .ready = state { return true }; return false }
 
@@ -132,10 +146,7 @@ final class AppModel: ObservableObject {
             let list = try await client.listSessions()
             sessions = list
             sessionError = nil
-            // 不自動挑第一筆:由使用者自己選(或開新對話)
-            if let cur = currentSession, let fresh = list.first(where: { $0.id == cur.id }) {
-                currentSession = fresh
-            }
+            if currentSession == nil, let first = list.first { select(first) }
         } catch {
             sessionError = error.localizedDescription
             if case .ready = state { state = .failed(error.localizedDescription) }

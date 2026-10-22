@@ -4,6 +4,7 @@ struct SettingsView: View {
     @EnvironmentObject var model: AppModel
     @Environment(\.dismiss) private var dismiss
     @State private var url = "wss://xoio.io/oc"
+    @State private var name = ""
     @State private var token = String()
     @State private var localError: String?
 
@@ -13,6 +14,22 @@ struct SettingsView: View {
                 Theme.background
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
+                        section("使用者名稱") {
+                            VStack(alignment: .leading, spacing: 8) {
+                                field("你的名字") {
+                                    TextField("你的名字", text: $name)
+                                        .textInputAutocapitalization(.words)
+                                        .autocorrectionDisabled()
+                                        .font(Theme.ui(15))
+                                        .foregroundStyle(Theme.ink)
+                                        .onChange(of: name) { _, v in model.setUserName(v) }
+                                }
+                                Text("只顯示在這支 App(App 裡的名字),不會改到 gateway 帳號")
+                                    .font(Theme.ui(11))
+                                    .foregroundStyle(Theme.muted)
+                            }
+                        }
+
                         section("手動連線") {
                             VStack(spacing: 10) {
                                 field("wss://your-gateway/oc") {
@@ -89,6 +106,7 @@ struct SettingsView: View {
             .onChange(of: model.state) { _, newValue in
                 if case .ready = newValue { dismiss() }
             }
+            .onAppear { name = model.userName }
             .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("完成") { dismiss() } } }
         }
     }
