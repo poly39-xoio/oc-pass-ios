@@ -353,7 +353,7 @@ final class AppModel: ObservableObject {
             var sawActive = false
 
             for _ in 0..<120 {                  // 最多約 3 分鐘
-                try? await Task.sleep(nanoseconds: 1_500_000_000)
+                try? await Task.sleep(nanoseconds: 600_000_000)
                 if Task.isCancelled { return }
 
                 let list = (try? await self.client.listSessions()) ?? []
@@ -379,6 +379,16 @@ final class AppModel: ObservableObject {
         }
     }
 
+    /// 收到 sessions.changed 時立刻檢查:若已無 active run,馬上收三點、換上結果
+    private func finishRunIfIdle(_ sessionKey: String) async {
+        guard awaitingReply else { return }
+        let list = (try? await client.listSessions()) ?? []
+        guard let row = list.first(where: { $0.id == sessionKey }) else { return }
+        if !row.hasActiveRun && row.activeRunIds.isEmpty {
+            await finishRun(sessionKey)
+        }
+    }
+
     private func finishRun(_ sessionKey: String) async {
         if let h = try? await client.history(sessionKey: sessionKey), !h.isEmpty {
             messages = collapsed(h)
@@ -391,6 +401,12 @@ final class AppModel: ObservableObject {
     // MARK: - Event stream
 
     private func handle(event: String, payload: Any?) {
+        if event == "sessions.changed" {
+            if let key = currentSession?.id {
+                Task { await self.finishRunIfIdle(key) }
+            }
+            return
+        }
         guard let dict = payload as? [String: Any] else { return }
         let stream = dict["stream"] as? String ?? ""
         let data = dict["data"] as? [String: Any] ?? [:]
