@@ -4,7 +4,7 @@ struct SettingsView: View {
     @EnvironmentObject var model: AppModel
     @Environment(\.dismiss) private var dismiss
     @State private var url = "wss://xoio.io/oc"
-    @State private var token = ***
+    @State private var token = String()
     @State private var localError: String?
 
     var body: some View {
