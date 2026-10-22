@@ -324,25 +324,30 @@ final class AppModel: ObservableObject {
     // MARK: - Chat
 
     func send(_ text: String, attachments: [PendingAttachment] = []) {
+        Task { try? await sendAsync(text, attachments: attachments) }
+    }
+
+    /// 送出;失敗時把使用者訊息收回、並把錯誤往上拋(讓 App 還原草稿)
+    func sendAsync(_ text: String, attachments: [PendingAttachment]) async throws {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !(trimmed.isEmpty && attachments.isEmpty), let session = currentSession else { return }
         let shown = trimmed.isEmpty ? (attachments.count == 1 ? "[附件] \(attachments[0].name)" : "[附件] \(attachments.count) 個檔案") : trimmed
-        messages.append(ChatMessage(role: .user, text: shown))
+        let userMessage = ChatMessage(role: .user, text: shown)
+        messages.append(userMessage)
         saveTranscript()
         streaming = true
         awaitingReply = true      // 三點持續閃到真正拿到最終回覆
         streamingMessageId = nil
 
-        Task {
-            do {
-                let res = try await client.send(sessionKey: session.id, message: trimmed, attachments: attachments)
-                startRunWatch(sessionKey: session.id, runId: res.runId)
-            } catch {
-                streaming = false
-                awaitingReply = false
-                messages.append(ChatMessage(role: .system, text: "送出失敗:\(error.localizedDescription)"))
-                saveTranscript()
-            }
+        do {
+            let res = try await client.send(sessionKey: session.id, message: trimmed, attachments: attachments)
+            startRunWatch(sessionKey: session.id, runId: res.runId)
+        } catch {
+            streaming = false
+            awaitingReply = false
+            if let i = messages.firstIndex(where: { $0.id == userMessage.id }) { messages.remove(at: i) }
+            saveTranscript()
+            throw error
         }
     }
 

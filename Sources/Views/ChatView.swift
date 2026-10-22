@@ -34,15 +34,19 @@ struct ChatView: View {
 
     /// 離開 App / 切換 session 都還在
     private func restoreDraft() {
-        draft = UserDefaults.standard.string(forKey: draftKey) ?? ""
+        let perSession = UserDefaults.standard.string(forKey: draftKey) ?? ""
+        let last = UserDefaults.standard.string(forKey: "ocpass.draft.last") ?? ""
+        draft = perSession.isEmpty ? last : perSession
         inputHeight = Theme.inputMin
     }
 
     private func persistDraft(_ value: String) {
         if value.isEmpty {
             UserDefaults.standard.removeObject(forKey: draftKey)
+            UserDefaults.standard.removeObject(forKey: "ocpass.draft.last")
         } else {
             UserDefaults.standard.set(value, forKey: draftKey)
+            UserDefaults.standard.set(value, forKey: "ocpass.draft.last")
         }
     }
 
@@ -222,7 +226,16 @@ struct ChatView: View {
         pending = []
         inputHeight = Theme.inputMin
         persistDraft("")
-        model.send(text, attachments: files)
+        Task {
+            do {
+                try await model.sendAsync(text, attachments: files)
+            } catch {
+                // 送不出去 → 把文字與附件還原,不要讓你的字消失
+                draft = text
+                pending = files
+                persistDraft(text)
+            }
+        }
     }
 
     private func loadFile(_ url: URL) {
