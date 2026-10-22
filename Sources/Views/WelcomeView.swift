@@ -60,10 +60,17 @@ struct WelcomeView: View {
                             )
                     }
 
-                    Button("Demo") { model.startDemo() }
-                        .font(Theme.ui(13, .semibold))
-                        .foregroundStyle(.white.opacity(0.72))
-                        .padding(.top, 4)
+                    Button {
+                        model.startDemo()
+                    } label: {
+                        Text("Demo")
+                            .font(Theme.ui(14, .bold))
+                            .foregroundStyle(Theme.ink)
+                            .frame(maxWidth: .infinity, minHeight: 44)
+                            .background(Theme.panel2)
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    }
+                    .padding(.top, 4)
                 }
                 .padding(18)
                 .background(Theme.panel)

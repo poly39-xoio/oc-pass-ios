@@ -35,6 +35,7 @@ struct DashboardView: View {
     private var connectionCard: some View {
         card("連線") {
             row("Gateway", model.gatewayURL?.host ?? "—")
+            row("版本", model.gatewayVersion.isEmpty ? "—" : model.gatewayVersion)
             row("延遲", model.latencyMs.map { String(format: "%.0f ms", $0) } ?? "—")
             row("狀態", model.isDemo ? "Demo" : (model.isConnected ? "已連線" : "未連線"))
             if let err = model.dashboardError {

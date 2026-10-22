@@ -23,6 +23,7 @@ final class AppModel: ObservableObject {
     @Published var dashboardLoading = false
     @Published var dashboardError: String?
     @Published var sessionError: String?
+    @Published var gatewayVersion: String = ""
     /// 使用者自己設定的名字(存在 UserDefaults),用來顯示「你是誰」而不是 Telegram 帳號
     @Published var userName: String = UserDefaults.standard.string(forKey: "ocpass.userName") ?? ""
 
@@ -170,6 +171,7 @@ final class AppModel: ObservableObject {
                     CredentialStore.save(url: url, token: dt, kind: "device")
                 }
                 currentGateway = Gateway(name: url.host ?? "gateway", url: url, lastSeen: Date())
+                if let v = hello.serverVersion, !v.isEmpty { gatewayVersion = v }
                 reconnectAttempt = 0
                 state = .ready
                 startHeartbeat()

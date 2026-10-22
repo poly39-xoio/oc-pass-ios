@@ -13,6 +13,8 @@ struct ChatView: View {
     @State private var showFileImporter = false
     @State private var photoItem: PhotosPickerItem?
 
+    private var draftKey: String { "ocpass.draft." + (model.currentSession?.id ?? "none") }
+
     var body: some View {
         ZStack {
             Theme.background
@@ -24,6 +26,23 @@ struct ChatView: View {
                 inputBar
                 bottomBar
             }
+        }
+        .onAppear { restoreDraft() }
+        .onChange(of: model.currentSession?.id) { _, _ in restoreDraft() }
+        .onChange(of: draft) { _, v in persistDraft(v) }
+    }
+
+    /// 離開 App / 切換 session 都還在
+    private func restoreDraft() {
+        draft = UserDefaults.standard.string(forKey: draftKey) ?? ""
+        inputHeight = Theme.inputMin
+    }
+
+    private func persistDraft(_ value: String) {
+        if value.isEmpty {
+            UserDefaults.standard.removeObject(forKey: draftKey)
+        } else {
+            UserDefaults.standard.set(value, forKey: draftKey)
         }
     }
 
@@ -44,10 +63,11 @@ struct ChatView: View {
             Spacer()
             if model.isDemo {
                 Text("DEMO")
-                    .font(Theme.ui(10, .bold))
-                    .padding(.horizontal, 7).padding(.vertical, 3)
-                    .background(Theme.warn.opacity(0.9))
-                    .foregroundStyle(.white)
+                    .font(Theme.ui(11, .black))
+                    .tracking(0.5)
+                    .padding(.horizontal, 9).padding(.vertical, 4)
+                    .background(Theme.panel)
+                    .foregroundStyle(Theme.accent)
                     .clipShape(Capsule())
             }
             if model.streaming { ProgressView().tint(.white).controlSize(.small) }
@@ -197,6 +217,7 @@ struct ChatView: View {
         draft = ""
         pending = []
         inputHeight = Theme.inputMin
+        persistDraft("")
         model.send(text, attachments: files)
     }
 

@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct SettingsView: View {
     @EnvironmentObject var model: AppModel
@@ -109,6 +110,8 @@ struct SettingsView: View {
                     }
                     .padding(18)
                 }
+                .scrollDismissesKeyboard(.interactively)
+                .simultaneousGesture(TapGesture().onEnded { hideKeyboard() })
             }
             .navigationTitle("設定")
             .navigationBarTitleDisplayMode(.inline)
@@ -116,7 +119,13 @@ struct SettingsView: View {
                 if case .ready = newValue { dismiss() }
             }
             .onAppear { name = model.userName }
-            .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("完成") { dismiss() } } }
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) { Button("完成") { dismiss() } }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("收鍵盤") { hideKeyboard() }
+                }
+            }
         }
     }
 
@@ -145,6 +154,10 @@ struct SettingsView: View {
             .frame(height: 46)
             .background(Theme.panel2)
             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+    }
+
+    private func hideKeyboard() {
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
 
     private var isBusy: Bool {

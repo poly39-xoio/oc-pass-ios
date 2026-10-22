@@ -43,6 +43,7 @@ struct HelloAuth {
     var operatorToken: TokenString?
     var role: String
     var scopes: [String]
+    var serverVersion: String?
 }
 
 /// OpenClaw Gateway WebSocket client（協議 v4 + ed25519 裝置身份）
@@ -116,10 +117,12 @@ final class GatewayClient {
                 operatorToken = tok
             }
         }
+        let server = dict["server"] as? [String: Any] ?? [:]
         return HelloAuth(deviceToken: primary,
                          operatorToken: operatorToken,
                          role: auth["role"] as? String ?? "operator",
-                         scopes: auth["scopes"] as? [String] ?? [])
+                         scopes: auth["scopes"] as? [String] ?? [],
+                         serverVersion: server["version"] as? String)
     }
 
     func disconnect() {
