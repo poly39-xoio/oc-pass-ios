@@ -44,9 +44,10 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 (async () => {
   let build = null;
   for (let i = 0; i < 30; i++) {
-    const { status, json } = await api(`/v1/apps/${APP_ID}/builds?limit=5&sort=-uploadedDate`);
+    const { status, json } = await api(`/v1/apps/${APP_ID}/builds?limit=10`);
     if (status !== 200) { console.log('list failed', status, JSON.stringify(json).slice(0, 200)); }
-    const first = (json.data || [])[0];
+    const list = (json.data || []).slice().sort((a, b) => String(b.attributes.uploadedDate || '').localeCompare(String(a.attributes.uploadedDate || '')));
+    const first = list[0];
     if (first) {
       const state = first.attributes.processingState;
       console.log('latest build', first.attributes.version, state);
