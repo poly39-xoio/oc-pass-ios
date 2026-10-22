@@ -64,6 +64,9 @@ struct DashboardView: View {
             if let err = model.dashboardError {
                 Text(err).font(Theme.ui(11)).foregroundStyle(Theme.warn)
             }
+            if let err = model.actionError {
+                Text(err).font(Theme.ui(11)).foregroundStyle(Theme.warn)
+            }
         }
     }
 

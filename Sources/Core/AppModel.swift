@@ -27,6 +27,7 @@ final class AppModel: ObservableObject {
     @Published var pendingApprovals: [PendingApproval] = []
     @Published var pairedDevices: [PairedDevice] = []
     @Published var availableModels: [String] = []
+    @Published var actionError: String?
     @Published var sessionError: String?
     @Published var gatewayVersion: String = ""
     /// 使用者自己設定的名字(存在 UserDefaults),用來顯示「你是誰」而不是 Telegram 帳號
@@ -544,10 +545,17 @@ final class AppModel: ObservableObject {
     }
 
     func setModel(_ model: String) {
-        guard let key = currentSession?.id else { return }
+        guard let key = currentSession?.id else {
+            actionError = "沒有選取會話"; return
+        }
         Task {
-            try? await client.patchSessionModel(sessionKey: key, model: model)
-            await loadDashboard()
+            do {
+                try await client.patchSessionModel(sessionKey: key, model: model)
+                actionError = nil
+                await loadDashboard()
+            } catch {
+                actionError = "切換模型失敗:" + error.localizedDescription
+            }
         }
     }
 

@@ -11,6 +11,17 @@ struct GatewaySession: Identifiable, Equatable {
     let activeRunIds: [String]
     let model: String?
 
+    static func parseModel(_ d: [String: Any]) -> String? {
+        if let s = d["model"] as? String, !s.isEmpty { return s }
+        if let m = d["model"] as? [String: Any] {
+            if let p = m["provider"] as? String, let id = m["model"] as? String { return p + "/" + id }
+            if let id = m["modelId"] as? String { return id }
+            if let id = m["id"] as? String { return id }
+        }
+        if let s = d["modelId"] as? String, !s.isEmpty { return s }
+        return nil
+    }
+
     static func parse(_ dict: [String: Any]) -> GatewaySession? {
         guard let key = dict["key"] as? String else { return nil }
         let sid = dict["sessionId"] as? String ?? key
@@ -24,7 +35,7 @@ struct GatewaySession: Identifiable, Equatable {
                               totalTokens: (dict["totalTokens"] as? Int) ?? Int(dict["totalTokens"] as? Double ?? 0),
                               hasActiveRun: dict["hasActiveRun"] as? Bool ?? false,
                               activeRunIds: (dict["activeRunIds"] as? [String]) ?? [],
-                              model: (dict["model"] as? String) ?? (dict["modelId"] as? String))
+                              model: GatewaySession.parseModel(dict))
     }
 }
 
