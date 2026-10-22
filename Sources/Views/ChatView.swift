@@ -14,6 +14,8 @@ struct ChatView: View {
     @State private var showFileImporter = false
     @State private var photoItem: PhotosPickerItem?
     @State private var sizeWarning: String?
+    @StateObject private var speech = SpeechInput()
+    @State private var dictationBase = ""
 
     private var draftKey: String { "ocpass.draft." + (model.currentSession?.id ?? "none") }
 
@@ -29,14 +31,18 @@ struct ChatView: View {
                 bottomBar
             }
         }
-        .alert(L("太大"), isPresented: Binding(get: { sizeWarning != nil }, set: { if !$0 { sizeWarning = nil } })) {
+        .alert(L("太大"), isPresented: Binding(get: { sizeWarning != nil || speech.error != nil }, set: { if !$0 { sizeWarning = nil; speech.error = nil } })) {
             Button(L("完成")) { sizeWarning = nil }
         } message: {
-            Text(sizeWarning ?? "")
+            Text(sizeWarning ?? speech.error ?? "")
         }
         .onAppear { restoreDraft() }
         .onChange(of: model.currentSession?.id) { _, _ in restoreDraft() }
         .onChange(of: draft) { _, v in persistDraft(v) }
+        .onChange(of: speech.transcript) { _, t in
+            guard speech.isRecording, !t.isEmpty else { return }
+            draft = dictationBase.isEmpty ? t : dictationBase + " " + t
+        }
     }
 
     /// 離開 App / 切換 session 都還在
@@ -176,6 +182,15 @@ struct ChatView: View {
                     .frame(width: 30, height: 30)
             }
 
+            Button {
+                toggleDictation()
+            } label: {
+                Image(systemName: speech.isRecording ? "mic.circle.fill" : "mic")
+                    .font(.system(size: 19, weight: .semibold))
+                    .foregroundStyle(speech.isRecording ? Theme.warn : .white)
+                    .frame(width: 30, height: 30)
+            }
+
             GrowingTextField(text: $draft, height: $inputHeight, focused: $inputFocused,
                              minHeight: Theme.inputMin, maxHeight: Theme.inputMax)
                 .frame(height: inputHeight)
@@ -225,11 +240,21 @@ struct ChatView: View {
         !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !pending.isEmpty
     }
 
+    private func toggleDictation() {
+        if speech.isRecording {
+            speech.stop()
+        } else {
+            dictationBase = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+            speech.start()
+        }
+    }
+
     private func sendNow() {
         guard canSend else { return }
         let text = draft
         let files = pending
         // 先清空 UI,再送出(避免文字殘留在輸入框、框不縮回)
+        if speech.isRecording { speech.stop() }
         draft = ""
         pending = []
         inputHeight = Theme.inputMin
