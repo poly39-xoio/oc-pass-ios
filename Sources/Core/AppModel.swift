@@ -157,6 +157,16 @@ final class AppModel: ObservableObject {
 
     // MARK: - Demo
 
+    func exitDemo() {
+        isDemo = false
+        state = .idle
+        messages = []
+        sessions = []
+        currentSession = nil
+        streaming = false
+        streamingMessageId = nil
+    }
+
     func startDemo() {
         isDemo = true
         state = .ready

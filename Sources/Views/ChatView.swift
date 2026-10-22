@@ -13,7 +13,12 @@ struct ChatView: View {
                 }
                 Text(model.currentSession?.title ?? "OpenClaw").font(.headline).lineLimit(1)
                 Spacer()
-                if model.isDemo { Text("DEMO").font(.caption2).padding(4).background(.orange).cornerRadius(4) }
+                if model.isDemo {
+                    Text("DEMO").font(.caption2).padding(4).background(.orange).cornerRadius(4)
+                    Button("退出") { model.exitDemo() }
+                        .font(.caption).padding(.horizontal, 8).padding(.vertical, 4)
+                        .background(Color.white.opacity(0.12)).cornerRadius(8)
+                }
                 if model.streaming { ProgressView().controlSize(.small) }
                 Button { model.showSettings = true } label: { Image(systemName: "gearshape") }
             }
