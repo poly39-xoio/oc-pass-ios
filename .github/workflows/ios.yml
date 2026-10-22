@@ -7,11 +7,13 @@ on:
 
 jobs:
   build:
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
       - name: Install XcodeGen
         run: brew install xcodegen
+      - name: Show Xcode version
+        run: xcodebuild -version && ls /Applications | grep -i xcode || true
       - name: Generate project
         run: xcodegen generate
       - name: Build for simulator
@@ -28,7 +30,7 @@ jobs:
 
   archive:
     if: github.event_name == 'workflow_dispatch'
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
       - name: Install XcodeGen
