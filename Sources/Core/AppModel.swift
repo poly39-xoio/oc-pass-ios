@@ -18,6 +18,7 @@ final class AppModel: ObservableObject {
     private let client = GatewayClient()
     private var currentGateway: Gateway?
     private var streamingMessageId: UUID?
+    private var pollTask: Task<Void, Never>?
 
     init() {
         client.onEvent { [weak self] name, payload in
@@ -103,6 +104,7 @@ final class AppModel: ObservableObject {
         Task {
             do {
                 _ = try await client.send(sessionKey: session.id, message: trimmed)
+                startHistoryPolling(sessionKey: session.id)
             } catch {
                 streaming = false
                 streamingMessageId = nil
@@ -114,6 +116,28 @@ final class AppModel: ObservableObject {
         }
         _ = assistant
         assistant.text = ""
+    }
+
+    /// 送出後每 1.5 秒抓一次歷史,直到看到助理回覆(最長 90 秒)
+    private func startHistoryPolling(sessionKey: String) {
+        pollTask?.cancel()
+        pollTask = Task { [weak self] in
+            guard let self else { return }
+            for _ in 0..<60 {
+                try? await Task.sleep(nanoseconds: 1_500_000_000)
+                if Task.isCancelled { return }
+                if let h = try? await self.client.history(sessionKey: sessionKey), !h.isEmpty {
+                    let hasAssistant = h.last?.role == .assistant
+                    await MainActor.run {
+                        if h.count >= self.messages.count || hasAssistant {
+                            self.messages = h
+                        }
+                        if hasAssistant { self.streaming = false }
+                    }
+                    if hasAssistant { return }
+                }
+            }
+        }
     }
 
     // MARK: - Event stream
