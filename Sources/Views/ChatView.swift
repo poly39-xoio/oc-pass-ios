@@ -98,6 +98,10 @@ struct ChatView: View {
                 Label("會話", systemImage: "bubble.left.and.bubble.right")
             }
             Spacer()
+            Button { model.showConsole = true } label: {
+                Label("控制台", systemImage: "rectangle.3.group")
+            }
+            Spacer()
             Button { model.showSettings = true } label: {
                 Label("設定", systemImage: "slider.horizontal.3")
             }
@@ -112,6 +116,13 @@ struct ChatView: View {
         .padding(.horizontal, 18)
         .padding(.vertical, 8)
         .background(Color.secondary.opacity(0.08))
+        .sheet(isPresented: $model.showConsole) {
+            if let url = model.gatewayURL {
+                WebConsoleView(baseURL: url, token: ***)
+            } else {
+                Text("尚未連線").padding()
+            }
+        }
     }
 }
 

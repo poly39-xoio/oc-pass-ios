@@ -12,6 +12,9 @@ final class AppModel: ObservableObject {
     @Published var showSessions = false
     @Published var isDemo = false
     @Published var streaming = false
+    @Published var showConsole = false
+    @Published var gatewayURL: URL?
+    @Published var gatewayToken: ***
 
     var isConnected: Bool { if case .ready = state { return true }; return false }
 
