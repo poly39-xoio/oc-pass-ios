@@ -56,9 +56,9 @@ struct SettingsView: View {
             localError = "網址格式不對（例:wss://xoio.io/oc）"
             return
         }
-        let t = token.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !t.isEmpty else { localError = "請貼上 Gateway token"; return }
-        model.connect(url: normalized, token: ***)
+        let tk = token.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !tk.isEmpty else { localError = "請貼上 Gateway token"; return }
+        model.connect(url: normalized, token: tk)
     }
 
     /// 接受 xoio.io/oc、https://xoio.io/oc、wss://xoio.io/oc 三種寫法
