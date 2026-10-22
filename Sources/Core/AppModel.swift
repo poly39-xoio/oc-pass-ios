@@ -30,12 +30,18 @@ final class AppModel: ObservableObject {
     @Published var sessionError: String?
     @Published var gatewayVersion: String = ""
     /// 使用者自己設定的名字(存在 UserDefaults),用來顯示「你是誰」而不是 Telegram 帳號
+    @Published var language: String = Language.current
     @Published var userName: String = UserDefaults.standard.string(forKey: "ocpass.userName") ?? ""
 
     var displayName: String {
         if isDemo { return userName.isEmpty ? "Demo" : userName }
         if !userName.isEmpty { return userName }
         return currentSession?.title ?? "OC Pass"
+    }
+
+    func setLanguage(_ value: String) {
+        language = value
+        Language.current = value
     }
 
     func setUserName(_ value: String) {

@@ -53,13 +53,13 @@ struct SessionListView: View {
                 .refreshable { await model.refreshSessions() }
 
                 if model.sessions.isEmpty {
-                    Text("沒有工作階段").font(Theme.ui(13)).foregroundStyle(.white.opacity(0.75))
+                    Text(L("沒有工作階段")).font(Theme.ui(13)).foregroundStyle(.white.opacity(0.75))
                 }
             }
             .navigationTitle("工作階段")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) { Button("完成") { dismiss() } }
+                ToolbarItem(placement: .topBarTrailing) { Button(L("完成")) { dismiss() } }
             }
         }
     }

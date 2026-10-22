@@ -6,8 +6,9 @@ struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var url = "wss://xoio.io/oc"
     @State private var name = ""
-    @State private var token = String()
+    @State private var token = ***)
     @State private var localError: String?
+    @State private var showHelp = false
 
     var body: some View {
         NavigationStack {
@@ -15,25 +16,36 @@ struct SettingsView: View {
                 Theme.background
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
-                        section("使用者名稱") {
+                        section(L("使用者名稱")) {
                             VStack(alignment: .leading, spacing: 8) {
-                                field("你的名字") {
-                                    TextField("你的名字", text: $name)
+                                field("name") {
+                                    TextField(L("你的名字"), text: $name)
                                         .textInputAutocapitalization(.words)
                                         .autocorrectionDisabled()
                                         .font(Theme.ui(15))
                                         .foregroundStyle(Theme.ink)
                                         .onChange(of: name) { _, v in model.setUserName(v) }
                                 }
-                                Text("只顯示在這支 App(App 裡的名字),不會改到 gateway 帳號")
+                                Text(L("只顯示在這支 App(App 裡的名字),不會改到 gateway 帳號"))
                                     .font(Theme.ui(11))
                                     .foregroundStyle(Theme.muted)
                             }
                         }
 
-                        section("手動連線") {
+                        section(L("語言")) {
+                            Picker("", selection: Binding(
+                                get: { model.language },
+                                set: { model.setLanguage($0) }
+                            )) {
+                                Text("繁體中文").tag("zh")
+                                Text("English").tag("en")
+                            }
+                            .pickerStyle(.segmented)
+                        }
+
+                        section(L("手動連線")) {
                             VStack(spacing: 10) {
-                                field("wss://your-gateway/oc") {
+                                field("url") {
                                     TextField("wss://your-gateway/oc", text: $url)
                                         .textInputAutocapitalization(.never)
                                         .autocorrectionDisabled()
@@ -41,7 +53,7 @@ struct SettingsView: View {
                                         .font(Theme.ui(15))
                                         .foregroundStyle(Theme.ink)
                                 }
-                                field("Gateway token") {
+                                field("token") {
                                     SecureField("Gateway token", text: $token)
                                         .textInputAutocapitalization(.never)
                                         .autocorrectionDisabled()
@@ -56,7 +68,7 @@ struct SettingsView: View {
                                     connect()
                                 } label: {
                                     HStack {
-                                        Text("連線").font(Theme.ui(15, .bold))
+                                        Text(L("連線")).font(Theme.ui(15, .bold))
                                         if isBusy { Spacer(); ProgressView().controlSize(.small) }
                                     }
                                     .foregroundStyle(.white)
@@ -68,11 +80,44 @@ struct SettingsView: View {
                             }
                         }
 
-                        section("關於") {
+                        section(L("使用說明")) {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text(L("OC Pass 是 OpenClaw gateway 的遙控器:你的對話與檔案只會送到你自己的 gateway,不經過我們。"))
+                                Text(L("1. 在你的電腦或伺服器安裝 OpenClaw,並啟動 gateway。"))
+                                Text(L("2. 在 gateway 上執行 openclaw qr,用手機掃描產生的 QR。"))
+                                Text(L("3. 沒有網域或公網 IP?可在設定改用 XOIO Relay(訂閱制)。"))
+                                Text(L("檔案上限:圖片 6 MB、其他檔案 18 MB。"))
+                                Text(L("隨時可在設定頁「移除這台裝置」斷開配對。"))
+                            }
+                            .font(Theme.ui(12))
+                            .foregroundStyle(Theme.ink)
+                            .lineSpacing(3)
+                        }
+
+                        Button(L("中斷連線（保留配對）")) {
+                            model.disconnect(); dismiss()
+                        }
+                        .font(Theme.ui(15, .semibold))
+                        .foregroundStyle(Theme.ink)
+                        .frame(maxWidth: .infinity, minHeight: 48)
+                        .background(Theme.panel)
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+                        Button(L("移除這台裝置（清除配對）")) {
+                            model.forgetDevice(); dismiss()
+                        }
+                        .font(Theme.ui(15, .semibold))
+                        .foregroundStyle(Theme.warn)
+                        .frame(maxWidth: .infinity, minHeight: 48)
+                        .background(Theme.panel)
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+                        // 隱私 / 關於 → 最下層
+                        section(L("關於")) {
                             VStack(spacing: 10) {
                                 Link(destination: URL(string: "https://xoio.io/privacy.html")!) {
                                     HStack {
-                                        Text("隱私政策").font(Theme.ui(15)).foregroundStyle(Theme.ink)
+                                        Text(L("隱私政策")).font(Theme.ui(15)).foregroundStyle(Theme.ink)
                                         Spacer()
                                         Image(systemName: "arrow.up.right")
                                             .font(.system(size: 12, weight: .bold))
@@ -83,47 +128,29 @@ struct SettingsView: View {
                                     .background(Theme.panel2)
                                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                                 }
-                                Text("版本 \(appVersion)")
+                                Text("\(L("版本")) \(appVersion)")
                                     .font(Theme.ui(12))
                                     .foregroundStyle(Theme.muted)
                                     .frame(maxWidth: .infinity, alignment: .leading)
                             }
                         }
-
-                        Button("中斷連線（保留配對）") {
-                            model.disconnect(); dismiss()
-                        }
-                        .font(Theme.ui(15, .semibold))
-                        .foregroundStyle(Theme.ink)
-                        .frame(maxWidth: .infinity, minHeight: 48)
-                        .background(Theme.panel)
-                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-
-                        Button("移除這台裝置（清除配對）") {
-                            model.forgetDevice(); dismiss()
-                        }
-                        .font(Theme.ui(15, .semibold))
-                        .foregroundStyle(Theme.warn)
-                        .frame(maxWidth: .infinity, minHeight: 48)
-                        .background(Theme.panel)
-                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     }
                     .padding(18)
                 }
                 .scrollDismissesKeyboard(.interactively)
                 .simultaneousGesture(TapGesture().onEnded { hideKeyboard() })
             }
-            .navigationTitle("設定")
+            .navigationTitle(L("設定"))
             .navigationBarTitleDisplayMode(.inline)
             .onChange(of: model.state) { _, newValue in
                 if case .ready = newValue { dismiss() }
             }
             .onAppear { name = model.userName }
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) { Button("完成") { dismiss() } }
+                ToolbarItem(placement: .topBarTrailing) { Button(L("完成")) { dismiss() } }
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
-                    Button("收鍵盤") { hideKeyboard() }
+                    Button(L("收鍵盤")) { hideKeyboard() }
                 }
             }
         }
@@ -148,7 +175,7 @@ struct SettingsView: View {
         }
     }
 
-    private func field<Content: View>(_ placeholder: String, @ViewBuilder content: () -> Content) -> some View {
+    private func field<Content: View>(_ id: String, @ViewBuilder content: () -> Content) -> some View {
         content()
             .padding(.horizontal, 12)
             .frame(height: 46)
@@ -167,12 +194,12 @@ struct SettingsView: View {
     private func connect() {
         localError = nil
         guard let normalized = normalize(url) else {
-            localError = "網址格式不對（例:wss://xoio.io/oc）"
+            localError = L("網址格式不對（例:wss://xoio.io/oc）")
             return
         }
         let tk = token.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !tk.isEmpty else { localError = "請貼上 Gateway token"; return }
-        model.connect(url: normalized, token: tk)
+        guard !tk.isEmpty else { localError = L("請貼上 Gateway token"); return }
+        model.connect(url: normalized, token: ***)
     }
 
     /// 接受 xoio.io/oc、https://xoio.io/oc、wss://xoio.io/oc 三種寫法

@@ -11,7 +11,7 @@ struct WelcomeView: View {
                 Spacer()
 
                 // Logo tile
-                Text("OC")
+                Text(L("OC"))
                     .font(Theme.ui(26, .black))
                     .foregroundStyle(Theme.panel)
                     .frame(width: 86, height: 86)
@@ -21,12 +21,12 @@ struct WelcomeView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
                     .shadow(color: Theme.ink.opacity(0.28), radius: 12, y: 8)
 
-                Text("OC Pass")
+                Text(L("OC Pass"))
                     .font(Theme.ui(30, .black))
                     .foregroundStyle(.white)
                     .padding(.top, 14)
 
-                Text("openclaw dashboard")
+                Text(L("openclaw dashboard"))
                     .font(Theme.ui(14, .medium))
                     .foregroundStyle(.white.opacity(0.78))
                     .padding(.top, 4)
@@ -37,7 +37,7 @@ struct WelcomeView: View {
                     Button {
                         model.showScanner = true
                     } label: {
-                        Text("掃描 QR 連線")
+                        Text(L("掃描 QR 連線"))
                             .font(Theme.ui(16, .bold))
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity, minHeight: 52)
@@ -48,7 +48,7 @@ struct WelcomeView: View {
                     Button {
                         model.showSettings = true
                     } label: {
-                        Text("手動輸入 gateway")
+                        Text(L("手動輸入 gateway"))
                             .font(Theme.ui(16, .semibold))
                             .foregroundStyle(Theme.ink)
                             .frame(maxWidth: .infinity, minHeight: 52)
@@ -63,7 +63,7 @@ struct WelcomeView: View {
                     Button {
                         model.startDemo()
                     } label: {
-                        Text("Demo")
+                        Text(L("Demo"))
                             .font(Theme.ui(14, .bold))
                             .foregroundStyle(Theme.ink)
                             .frame(maxWidth: .infinity, minHeight: 44)

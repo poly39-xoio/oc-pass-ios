@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import PhotosUI
 import UniformTypeIdentifiers
 
@@ -12,6 +13,7 @@ struct ChatView: View {
     @State private var showPhotoPicker = false
     @State private var showFileImporter = false
     @State private var photoItem: PhotosPickerItem?
+    @State private var sizeWarning: String?
 
     private var draftKey: String { "ocpass.draft." + (model.currentSession?.id ?? "none") }
 
@@ -26,6 +28,11 @@ struct ChatView: View {
                 inputBar
                 bottomBar
             }
+        }
+        .alert(L("太大"), isPresented: Binding(get: { sizeWarning != nil }, set: { if !$0 { sizeWarning = nil } })) {
+            Button(L("完成")) { sizeWarning = nil }
+        } message: {
+            Text(sizeWarning ?? "")
         }
         .onAppear { restoreDraft() }
         .onChange(of: model.currentSession?.id) { _, _ in restoreDraft() }
@@ -60,7 +67,7 @@ struct ChatView: View {
                 .lineLimit(1)
             Spacer()
             if model.isDemo {
-                Text("DEMO")
+                Text(L("DEMO"))
                     .font(Theme.ui(11, .black))
                     .tracking(0.5)
                     .padding(.horizontal, 9).padding(.vertical, 4)
@@ -76,7 +83,7 @@ struct ChatView: View {
     private var reconnectingBanner: some View {
         HStack(spacing: 8) {
             ProgressView().controlSize(.small).tint(.white)
-            Text("連線中斷,正在重連…")
+            Text(L("連線中斷,正在重連…"))
                 .font(Theme.ui(12, .medium))
                 .foregroundStyle(.white)
         }
@@ -188,8 +195,8 @@ struct ChatView: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 5)
         .confirmationDialog("附加檔案", isPresented: $showAttachMenu, titleVisibility: .visible) {
-            Button("照片") { showPhotoPicker = true }
-            Button("檔案") { showFileImporter = true }
+            Button(L("照片")) { showPhotoPicker = true }
+            Button(L("檔案")) { showFileImporter = true }
             Button("取消", role: .cancel) {}
         }
         .photosPicker(isPresented: $showPhotoPicker, selection: $photoItem, matching: .images)
@@ -203,9 +210,10 @@ struct ChatView: View {
             guard let item else { return }
             Task {
                 if let data = try? await item.loadTransferable(type: Data.self) {
-                    let name = "photo-\(Int(Date().timeIntervalSince1970)).jpg"
+                    let att = Self.makeImageAttachment(data)
                     await MainActor.run {
-                        pending.append(PendingAttachment(name: name, mimeType: "image/jpeg", data: data))
+                        if let att { pending.append(att) }
+                        else { sizeWarning = L("無法讀取這個檔案") }
                     }
                 }
                 await MainActor.run { photoItem = nil }
@@ -238,10 +246,38 @@ struct ChatView: View {
         }
     }
 
+    /// 圖片 > 6 MB 自動壓縮(縮尺寸 + 降品質)
+    static func makeImageAttachment(_ data: Data) -> PendingAttachment? {
+        guard let img = UIImage(data: data) else { return nil }
+        let limit = 6 * 1024 * 1024
+        var out = img.jpegData(compressionQuality: 0.9) ?? data
+        var quality: CGFloat = 0.9
+        while out.count > limit && quality > 0.35 {
+            quality -= 0.1
+            out = img.jpegData(compressionQuality: quality) ?? out
+        }
+        if out.count > limit {
+            let scale = sqrt(Double(limit) / Double(out.count))
+            let size = CGSize(width: img.size.width * scale, height: img.size.height * scale)
+            UIGraphicsBeginImageContextWithOptions(size, false, 1)
+            img.draw(in: CGRect(origin: .zero, size: size))
+            let small = UIGraphicsGetImageFromCurrentImageContext()
+            UIGraphicsEndImageContext()
+            if let s = small?.jpegData(compressionQuality: 0.85) { out = s }
+        }
+        guard out.count <= limit else { return nil }
+        return PendingAttachment(name: "photo-\(Int(Date().timeIntervalSince1970)).jpg", mimeType: "image/jpeg", data: out)
+    }
+
     private func loadFile(_ url: URL) {
         let access = url.startAccessingSecurityScopedResource()
         defer { if access { url.stopAccessingSecurityScopedResource() } }
-        guard let data = try? Data(contentsOf: url) else { return }
+        guard let data = try? Data(contentsOf: url) else {
+            sizeWarning = L("無法讀取這個檔案"); return
+        }
+        if data.count > 18 * 1024 * 1024 {
+            sizeWarning = L("這個檔案超過 18 MB,請壓縮後再傳"); return
+        }
         let mime = UTType(filenameExtension: url.pathExtension)?.preferredMIMEType ?? "application/octet-stream"
         pending.append(PendingAttachment(name: url.lastPathComponent, mimeType: mime, data: data))
     }
@@ -251,11 +287,11 @@ struct ChatView: View {
     private var bottomBar: some View {
         HStack {
             Button { model.showSessions = true } label: {
-                Label("會話", systemImage: "bubble.left.and.bubble.right")
+                Label(L("會話"), systemImage: "bubble.left.and.bubble.right")
             }
             Spacer()
             Button { model.showDashboard = true } label: {
-                Label("控制台", systemImage: "rectangle.3.group")
+                Label(L("控制台"), systemImage: "rectangle.3.group")
             }
             Spacer()
             Button { model.showSettings = true } label: {

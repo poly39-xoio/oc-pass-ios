@@ -28,7 +28,7 @@ struct DashboardView: View {
             .navigationTitle("控制台")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) { Button("完成") { dismiss() } }
+                ToolbarItem(placement: .topBarTrailing) { Button(L("完成")) { dismiss() } }
             }
             .task { await model.loadDashboard() }
             .confirmationDialog("撤銷這台裝置？", isPresented: Binding(
@@ -80,7 +80,7 @@ struct DashboardView: View {
                 Spacer()
                 Menu {
                     if model.availableModels.isEmpty {
-                        Text("沒有可用模型")
+                        Text(L("沒有可用模型"))
                     } else {
                         ForEach(model.availableModels, id: \.self) { m in
                             Button(m) { model.setModel(m) }
@@ -114,7 +114,7 @@ struct DashboardView: View {
     private var approvalsCard: some View {
         card("待核准 (\(model.pendingApprovals.count))") {
             if model.pendingApprovals.isEmpty {
-                Text("沒有待核准的請求").font(Theme.ui(12)).foregroundStyle(Theme.muted)
+                Text(L("沒有待核准的請求")).font(Theme.ui(12)).foregroundStyle(Theme.muted)
             } else {
                 ForEach(model.pendingApprovals) { a in
                     VStack(alignment: .leading, spacing: 6) {
@@ -122,13 +122,13 @@ struct DashboardView: View {
                         Text((a.platform + " " + a.ip).trimmingCharacters(in: .whitespaces))
                             .font(Theme.ui(10)).foregroundStyle(Theme.muted)
                         HStack(spacing: 8) {
-                            Button("批准") { model.approve(a) }
+                            Button(L("批准")) { model.approve(a) }
                                 .font(Theme.ui(12, .bold))
                                 .foregroundStyle(.white)
                                 .padding(.horizontal, 14).padding(.vertical, 6)
                                 .background(Theme.accent)
                                 .clipShape(Capsule())
-                            Button("拒絕") { model.reject(a) }
+                            Button(L("拒絕")) { model.reject(a) }
                                 .font(Theme.ui(12, .semibold))
                                 .foregroundStyle(Theme.warn)
                                 .padding(.horizontal, 14).padding(.vertical, 6)
@@ -147,7 +147,7 @@ struct DashboardView: View {
     private var devicesCard: some View {
         card("已配對裝置 (\(model.pairedDevices.count))") {
             if model.pairedDevices.isEmpty {
-                Text("沒有已配對裝置").font(Theme.ui(12)).foregroundStyle(Theme.muted)
+                Text(L("沒有已配對裝置")).font(Theme.ui(12)).foregroundStyle(Theme.muted)
             } else {
                 ForEach(model.pairedDevices) { d in
                     HStack(spacing: 8) {
@@ -157,7 +157,7 @@ struct DashboardView: View {
                                 .font(Theme.ui(10)).foregroundStyle(Theme.muted).lineLimit(1)
                         }
                         Spacer()
-                        Button("撤銷") { deviceToRemove = d }
+                        Button(L("撤銷")) { deviceToRemove = d }
                             .font(Theme.ui(11, .bold))
                             .foregroundStyle(Theme.warn)
                             .padding(.horizontal, 10).padding(.vertical, 5)
@@ -195,7 +195,7 @@ struct DashboardView: View {
                             ))
                             .labelsHidden()
                             .scaleEffect(0.8)
-                            Button("執行") { model.runJob(job) }
+                            Button(L("執行")) { model.runJob(job) }
                                 .font(Theme.ui(11, .bold))
                                 .foregroundStyle(Theme.ink)
                                 .padding(.horizontal, 10).padding(.vertical, 4)
@@ -249,7 +249,7 @@ struct DashboardView: View {
     private var sessionsCard: some View {
         card("最近會話") {
             if model.sessions.isEmpty {
-                Text("沒有會話").font(Theme.ui(12)).foregroundStyle(Theme.muted)
+                Text(L("沒有會話")).font(Theme.ui(12)).foregroundStyle(Theme.muted)
             } else {
                 ForEach(model.sessions.prefix(6)) { s in
                     Button {
