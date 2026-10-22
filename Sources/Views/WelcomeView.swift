@@ -29,9 +29,17 @@ struct WelcomeView: View {
         }
         .padding(24)
         .overlay(alignment: .bottom) {
-            if case .failed(let msg) = model.state {
-                Text(msg).font(.footnote).foregroundStyle(.red).padding(.bottom, 8)
+            VStack(spacing: 6) {
+                if case .connecting = model.state { ProgressView("連線中…") }
+                if case .authenticating = model.state { ProgressView("認證中…") }
+                if case .pairing(let id) = model.state {
+                    Text("需要配對核准:\(id)").font(.footnote).foregroundStyle(.orange)
+                }
+                if case .failed(let msg) = model.state {
+                    Text(msg).font(.footnote).foregroundStyle(.red).multilineTextAlignment(.center)
+                }
             }
+            .padding(.bottom, 8)
         }
     }
 }
