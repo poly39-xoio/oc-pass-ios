@@ -264,7 +264,7 @@ final class GatewayClient {
     }
 
     func cronJobs() async throws -> [GatewayCronJob] {
-        let payload = try await request("cron.list", [:])
+        let payload = try await request("cron.list", ["includeDisabled": true, "limit": 100])
         let dict = payload as? [String: Any] ?? [:]
         let raw = (dict["jobs"] as? [[String: Any]]) ?? (dict["items"] as? [[String: Any]]) ?? []
         return raw.compactMap(GatewayCronJob.parse)

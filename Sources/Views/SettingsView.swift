@@ -32,17 +32,6 @@ struct SettingsView: View {
                             }
                         }
 
-                        section(L("語言")) {
-                            Picker("", selection: Binding(
-                                get: { model.language },
-                                set: { model.setLanguage($0) }
-                            )) {
-                                Text("繁體中文").tag("zh")
-                                Text("English").tag("en")
-                            }
-                            .pickerStyle(.segmented)
-                        }
-
                         section(L("手動連線")) {
                             VStack(spacing: 10) {
                                 field("url") {
@@ -147,7 +136,22 @@ struct SettingsView: View {
             }
             .onAppear { name = model.userName }
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) { Button(L("完成")) { dismiss() } }
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        model.setLanguage(Language.isEnglish ? "zh" : "en")
+                    } label: {
+                        Text(Language.isEnglish ? "中" : "EN")
+                            .font(Theme.ui(13, .bold))
+                            .foregroundStyle(Theme.accent)
+                            .frame(width: 44, height: 30)
+                            .background(Theme.panel2)
+                            .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button(L("完成")) { dismiss() }
+                        .font(Theme.ui(15, .semibold))
+                }
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
                     Button(L("收鍵盤")) { hideKeyboard() }
