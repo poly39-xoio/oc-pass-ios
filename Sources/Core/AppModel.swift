@@ -30,7 +30,7 @@ final class AppModel: ObservableObject {
         client.onEvent { [weak self] name, payload in
             Task { @MainActor in self?.handle(event: name, payload: payload) }
         }
-        client.onDisconnect { [weak self] in
+        client.onDisconnect = { [weak self] in
             Task { @MainActor in self?.handleDrop() }
         }
     }
@@ -38,7 +38,9 @@ final class AppModel: ObservableObject {
     /// 斷線 → 指數退避自動重連(1,2,4,8,15 秒上限)
     private func handleDrop() {
         guard !reconnecting else { return }
-        guard let url = gatewayURL, let tok = gatewayToken, !tok.isEmpty else { return }
+        guard let url = gatewayURL else { return }
+        let tok = gatewayToken
+        guard !tok.isEmpty else { return }
         reconnecting = true
         state = .connecting
         Task {
