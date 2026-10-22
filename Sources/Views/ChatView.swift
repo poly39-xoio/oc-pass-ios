@@ -95,16 +95,24 @@ struct ChatView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 10) {
                     ForEach(model.messages) { m in
-                        MessageBubble(message: m).id(m.id)
+                        if m.pending && m.text.isEmpty {
+                            HStack { TypingBubble(); Spacer(minLength: 40) }.id(m.id)
+                        } else {
+                            MessageBubble(message: m).id(m.id)
+                        }
                     }
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 12)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .defaultScrollAnchor(.bottom)
             .scrollDismissesKeyboard(.interactively)
             .contentShape(Rectangle())
             .onTapGesture { inputFocused = false }   // 點空白處收起鍵盤(像 Telegram)
+            .onAppear {
+                if let last = model.messages.last { proxy.scrollTo(last.id, anchor: .bottom) }
+            }
             .onChange(of: model.messages.count) { _, _ in
                 if let last = model.messages.last {
                     withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
@@ -255,6 +263,25 @@ struct ChatView: View {
         .background(Theme.accent.opacity(0.92))
         .sheet(isPresented: $model.showDashboard) {
             DashboardView()
+        }
+    }
+}
+
+/// 思考中的循環動畫(三個點)
+struct TypingBubble: View {
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 0.12)) { ctx in
+            let t = ctx.date.timeIntervalSinceReferenceDate
+            HStack(spacing: 5) {
+                ForEach(0..<3, id: \.self) { i in
+                    let wave = 0.35 + 0.65 * max(0, sin(t * 3.2 - Double(i) * 0.7))
+                    Circle().fill(Theme.ink.opacity(wave)).frame(width: 7, height: 7)
+                }
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 12)
+            .background(Theme.panel)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
     }
 }

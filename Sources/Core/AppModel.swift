@@ -239,6 +239,27 @@ final class AppModel: ObservableObject {
         isDemo = false
     }
 
+    /// Telegram 風格:一段回覆裡只留最後一個助理訊息(中間的工具/旁白不顯示)
+    private func collapsed(_ list: [ChatMessage]) -> [ChatMessage] {
+        var out: [ChatMessage] = []
+        var buffer: [ChatMessage] = []
+        func flush() {
+            if let last = buffer.last { out.append(last) }
+            buffer = []
+        }
+        for m in list {
+            if m.role == .assistant {
+                if m.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { continue }
+                buffer.append(m)
+            } else {
+                flush()
+                out.append(m)
+            }
+        }
+        flush()
+        return out
+    }
+
     private func saveTranscript() {
         guard let key = currentSession?.id, !key.isEmpty else { return }
         TranscriptCache.save(messages, for: key)
@@ -282,7 +303,7 @@ final class AppModel: ObservableObject {
             do {
                 let history = try await client.history(sessionKey: session.id)
                 if !history.isEmpty, history.count >= cached.count {
-                    messages = history
+                    messages = collapsed(history)
                     saveTranscript()
                 }
             } catch {
@@ -333,7 +354,7 @@ final class AppModel: ObservableObject {
                     let hasAssistant = h.last?.role == .assistant
                     await MainActor.run {
                         if h.count >= self.messages.count || hasAssistant {
-                            self.messages = h
+                            self.messages = self.collapsed(h)
                             self.saveTranscript()
                         }
                         if hasAssistant { self.streaming = false }
@@ -355,11 +376,8 @@ final class AppModel: ObservableObject {
         let stream = dict["stream"] as? String ?? ""
         let data = dict["data"] as? [String: Any] ?? [:]
 
-        // 助手文字(逐步)
+        // 像 Telegram 一樣:過程中的文字不顯示,只留「思考中」動畫,答案在完成後一次顯示
         if event == "agent", stream == "assistant" || stream == "message" || stream == "completion" {
-            let chunk = (data["delta"] as? String) ?? (data["text"] as? String) ?? ""
-            guard !chunk.isEmpty else { return }
-            appendAssistant(chunk)
             return
         }
         // 執行結束
@@ -367,10 +385,15 @@ final class AppModel: ObservableObject {
             let phase = data["phase"] as? String ?? ""
             if phase == "completed" || phase == "failed" || phase == "cancelled" {
                 streaming = false
-                if let id = streamingMessageId, let i = messages.firstIndex(where: { $0.id == id }) {
-                    messages[i].pending = false
-                }
                 streamingMessageId = nil
+                if let key = currentSession?.id {
+                    Task {
+                        if let h = try? await client.history(sessionKey: key), !h.isEmpty {
+                            messages = collapsed(h)
+                            saveTranscript()
+                        }
+                    }
+                }
             }
         }
     }
