@@ -50,16 +50,10 @@ struct ChatView: View {
 
     private var header: some View {
         HStack(spacing: 10) {
-            VStack(alignment: .leading, spacing: 1) {
-                Text(model.displayName)
-                    .font(Theme.ui(16, .bold))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                Text(model.currentSession?.title ?? "OC Pass")
-                    .font(Theme.ui(10))
-                    .foregroundStyle(.white.opacity(0.62))
-                    .lineLimit(1)
-            }
+            Text(model.displayName)
+                .font(Theme.ui(15, .bold))
+                .foregroundStyle(.white)
+                .lineLimit(1)
             Spacer()
             if model.isDemo {
                 Text("DEMO")
@@ -72,7 +66,7 @@ struct ChatView: View {
             }
         }
         .padding(.horizontal, 16)
-        .padding(.vertical, 10)
+        .padding(.vertical, 5)
     }
 
     private var reconnectingBanner: some View {
@@ -168,7 +162,7 @@ struct ChatView: View {
                 Image(systemName: "paperclip")
                     .font(.system(size: 19, weight: .semibold))
                     .foregroundStyle(.white)
-                    .frame(width: 34, height: 34)
+                    .frame(width: 30, height: 30)
             }
 
             GrowingTextField(text: $draft, height: $inputHeight, focused: $inputFocused,
@@ -182,13 +176,13 @@ struct ChatView: View {
                 sendNow()
             } label: {
                 Image(systemName: "arrow.up.circle.fill")
-                    .font(.system(size: 30))
+                    .font(.system(size: 27))
                     .foregroundStyle(canSend ? Theme.accent : Theme.muted.opacity(0.6))
             }
             .disabled(!canSend)
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(.vertical, 5)
         .confirmationDialog("附加檔案", isPresented: $showAttachMenu, titleVisibility: .visible) {
             Button("照片") { showPhotoPicker = true }
             Button("檔案") { showFileImporter = true }
@@ -258,10 +252,10 @@ struct ChatView: View {
             }
             .accessibilityLabel("連線")
         }
-        .font(Theme.ui(11, .semibold))
+        .font(Theme.ui(10.5, .semibold))
         .foregroundStyle(.white.opacity(0.92))
         .padding(.horizontal, 18)
-        .padding(.vertical, 9)
+        .padding(.vertical, 6)
         .background(Theme.accent.opacity(0.92))
         .sheet(isPresented: $model.showDashboard) {
             DashboardView()
