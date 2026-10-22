@@ -31,6 +31,13 @@ targets:
         NSMicrophoneUsageDescription: 語音輸入需要麥克風權限
         NSSpeechRecognitionUsageDescription: 將語音轉成文字送給你的 agent
         ITSAppUsesNonExemptEncryption: false
+        CFBundleIconFiles:
+          - AppIcon60x60
+        CFBundleIcons:
+          CFBundlePrimaryIcon:
+            CFBundleIconFiles:
+              - AppIcon60x60
+            CFBundleIconName: AppIcon
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: io.xoio.ocpass
