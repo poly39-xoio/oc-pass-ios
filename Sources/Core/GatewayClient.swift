@@ -277,7 +277,7 @@ final class GatewayClient {
     // MARK: - Management (dashboard)
 
     func setJobEnabled(jobId: String, enabled: Bool) async throws {
-        _ = try await request("cron.update", ["jobId": jobId, "enabled": enabled])
+        _ = try await request("cron.update", ["jobId": jobId, "patch": ["enabled": enabled]])
     }
 
     func jobRuns(jobId: String, limit: Int = 5) async throws -> [[String: Any]] {
