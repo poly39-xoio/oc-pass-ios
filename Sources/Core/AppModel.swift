@@ -479,7 +479,7 @@ final class AppModel: ObservableObject {
     func startDemo() {
         isDemo = true
         state = .ready
-        sessions = [GatewaySession(id: "demo", sessionId: "demo", title: "Demo session", updatedAt: Date(), unread: 0, totalTokens: 0)]
+        sessions = [GatewaySession(id: "demo", sessionId: "demo", title: "Demo session", updatedAt: Date(), unread: 0, totalTokens: 0, hasActiveRun: false, activeRunIds: [])]
         currentSession = sessions.first
         messages = DemoData.messages
     }
