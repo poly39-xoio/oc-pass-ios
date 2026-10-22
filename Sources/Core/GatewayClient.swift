@@ -165,6 +165,11 @@ final class GatewayClient {
     static func parseHistoryMessage(_ raw: [String: Any]) -> ChatMessage? {
         let m = (raw["message"] as? [String: Any]) ?? raw
         let roleRaw = (m["role"] as? String) ?? (m["type"] as? String) ?? "assistant"
+        let lowered = roleRaw.lowercased()
+        // 工具/執行結果不是給人看的內容 → 標成 hidden(只當分隔線用)
+        if ["tool", "toolresult", "tool_result", "function", "function_result", "command", "exec", "developer"].contains(lowered) {
+            return ChatMessage(role: .system, text: "tool", hidden: true)
+        }
         let role: MessageRole = roleRaw == "user" ? .user : (roleRaw == "system" ? .system : .assistant)
 
         var text = ""

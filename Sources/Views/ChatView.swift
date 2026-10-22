@@ -93,7 +93,7 @@ struct ChatView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 10) {
-                    ForEach(model.messages) { m in
+                    ForEach(model.messages.filter { !$0.isHidden }) { m in
                         MessageBubble(message: m).id(m.id)
                     }
                     if model.awaitingReply {

@@ -250,6 +250,11 @@ final class AppModel: ObservableObject {
             buffer = []
         }
         for m in list {
+            if m.isHidden {
+                // 工具產物:前面的助理訊息是「中間過程」→ 丟掉,不讓它變成最終答案
+                buffer = []
+                continue
+            }
             if m.role == .assistant {
                 if m.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { continue }
                 buffer.append(m)
