@@ -390,6 +390,21 @@ final class AppModel: ObservableObject {
     }
 
     private func finishRun(_ sessionKey: String) async {
+        // 執行結束 ≠ 回覆已寫進歷史:這裡要等到「最後一則是助理訊息」才收三點,
+        // 否則會出現「下一題送出時,上一題答案才跳出來」。
+        for _ in 0..<10 {                       // 最多約 5 秒
+            if let h = try? await client.history(sessionKey: sessionKey), !h.isEmpty {
+                let c = collapsed(h)
+                if c.last?.role == .assistant {
+                    messages = c
+                    saveTranscript()
+                    streaming = false
+                    awaitingReply = false
+                    return
+                }
+            }
+            try? await Task.sleep(nanoseconds: 500_000_000)
+        }
         if let h = try? await client.history(sessionKey: sessionKey), !h.isEmpty {
             messages = collapsed(h)
             saveTranscript()
