@@ -1,5 +1,50 @@
 import Foundation
 
+/// 連線憑證的種類
+enum AuthMode {
+    case shared(TokenString)      // gateway 共用 token(手動輸入)
+    case device(TokenString)      // 配對後拿到的裝置 token
+    case bootstrap(TokenString)   // QR 的一次性 setup code
+
+    var authParams: [String: Any] {
+        switch self {
+        case .shared(let t): return ["token": t]
+        case .device(let t): return ["deviceToken": t]
+        case .bootstrap(let t): return ["bootstrapToken": t]
+        }
+    }
+
+    /// 簽章時放進 payload 的 token 欄位(與 gateway 的 resolveSignatureToken 一致)
+    var signToken: TokenString {
+        switch self {
+        case .shared(let t), .device(let t), .bootstrap(let t): return t
+        }
+    }
+
+    var role: String {
+        switch self {
+        case .bootstrap: return "node"
+        default: return "operator"
+        }
+    }
+
+    var scopes: [String] {
+        switch self {
+        case .bootstrap: return []
+        case .shared: return ["operator.admin"]
+        case .device: return ["operator.read", "operator.write"]
+        }
+    }
+}
+
+/// 配對握手回傳的憑證
+struct HelloAuth {
+    var deviceToken: TokenString?
+    var operatorToken: TokenString?
+    var role: String
+    var scopes: [String]
+}
+
 /// OpenClaw Gateway WebSocket client（協議 v4 + ed25519 裝置身份）
 final class GatewayClient {
     enum ClientError: LocalizedError {
@@ -24,31 +69,57 @@ final class GatewayClient {
 
     func onEvent(_ h: @escaping (String, Any?) -> Void) { eventHandler = h }
 
-    func connect(url: URL, token: String) async throws {
+    func connect(url: URL, auth: AuthMode) async throws -> HelloAuth {
         let t = URLSession(configuration: .default).webSocketTask(with: url)
         task = t; t.resume(); isOpen = true
         receiveLoop()
 
         let nonce = try await waitForChallenge()
         let signedAt = Int64(Date().timeIntervalSince1970 * 1000)
-        let clientId = "openclaw-ios", mode = "ui", role = "operator"
-        let scopes = ["operator.admin"], platform = "ios", family = "phone"
+        let clientId = "openclaw-ios", mode = "ui"
+        let role = auth.role, scopes = auth.scopes
+        let platform = "ios", family = "phone"
         let payload = DeviceIdentity.payloadV3(deviceId: identity.deviceId, clientId: clientId,
                                               clientMode: mode, role: role, scopes: scopes,
-                                              signedAt: signedAt, token: token, nonce: nonce,
+                                              signedAt: signedAt, token: auth.signToken, nonce: nonce,
                                               platform: platform, deviceFamily: family)
         guard let signature = identity.sign(payload) else { throw ClientError.server("簽章失敗") }
 
         let params: [String: Any] = [
             "minProtocol": 4, "maxProtocol": 4,
-            "client": ["id": clientId, "displayName": "OC Pass", "version": "0.1.0",
+            "client": ["id": clientId, "displayName": "OC Pass", "version": "1.0",
                        "platform": platform, "deviceFamily": family, "mode": mode,
                        "instanceId": UUID().uuidString],
-            "caps": [], "auth": ["token": token], "role": role, "scopes": scopes,
+            "caps": [], "auth": auth.authParams, "role": role, "scopes": scopes,
             "device": ["id": identity.deviceId, "publicKey": identity.publicKeyBase64URL,
                        "signature": signature, "signedAt": signedAt, "nonce": nonce]
         ]
-        _ = try await request("connect", params)
+        let hello = try await request("connect", params)
+        return Self.parseHello(hello)
+    }
+
+    /// 從 hello-ok 取出這台裝置的憑證
+    static func parseHello(_ payload: Any?) -> HelloAuth {
+        let dict = payload as? [String: Any] ?? [:]
+        let auth = dict["auth"] as? [String: Any] ?? [:]
+        let primary = auth["deviceToken"] as? String
+        var operatorToken: TokenString?
+        if let extra = auth["deviceTokens"] as? [[String: Any]] {
+            for entry in extra {
+                let role = entry["role"] as? String ?? ""
+                if role == "operator", let tok = entry["deviceToken"] as? String, !tok.isEmpty {
+                    operatorToken = tok
+                    break
+                }
+            }
+            if operatorToken == nil, let first = extra.first, let tok = first["deviceToken"] as? String {
+                operatorToken = tok
+            }
+        }
+        return HelloAuth(deviceToken: primary,
+                         operatorToken: operatorToken,
+                         role: auth["role"] as? String ?? "operator",
+                         scopes: auth["scopes"] as? [String] ?? [])
     }
 
     func disconnect() {
@@ -70,7 +141,6 @@ final class GatewayClient {
         }
     }
 
-
     // MARK: - High level API
 
     func listSessions(limit: Int = 50) async throws -> [GatewaySession] {
@@ -80,16 +150,39 @@ final class GatewayClient {
         return raw.compactMap(GatewaySession.parse)
     }
 
-    func history(sessionKey: String, limit: Int = 50) async throws -> [ChatMessage] {
+    func history(sessionKey: String, limit: Int = 80) async throws -> [ChatMessage] {
         let payload = try await request("chat.history", ["sessionKey": sessionKey, "limit": limit])
         let dict = payload as? [String: Any] ?? [:]
         let raw = (dict["messages"] as? [[String: Any]]) ?? []
-        return raw.compactMap { m in
-            let role = (m["role"] as? String) ?? (m["type"] as? String) ?? "assistant"
-            let text = (m["text"] as? String) ?? (m["content"] as? String) ?? ""
-            guard !text.isEmpty else { return nil }
-            return ChatMessage(role: role == "user" ? .user : (role == "system" ? .system : .assistant), text: text)
+        return raw.compactMap { Self.parseHistoryMessage($0) }
+    }
+
+    /// gateway 的 chat.history 每筆可能是 {role,text} 或 {role,content:[{type:"text",text:…}]},
+    /// 也可能包一層 message。這裡全部容錯處理,避免助理回覆被漏掉。
+    static func parseHistoryMessage(_ raw: [String: Any]) -> ChatMessage? {
+        let m = (raw["message"] as? [String: Any]) ?? raw
+        let roleRaw = (m["role"] as? String) ?? (m["type"] as? String) ?? "assistant"
+        let role: MessageRole = roleRaw == "user" ? .user : (roleRaw == "system" ? .system : .assistant)
+
+        var text = ""
+        if let s = m["text"] as? String { text = s }
+        if text.isEmpty, let s = m["content"] as? String { text = s }
+        if text.isEmpty, let blocks = m["content"] as? [[String: Any]] {
+            let parts: [TokenString] = blocks.compactMap { b in
+                let kind = b["type"] as? String ?? ""
+                if kind == "text" || kind == "output_text" {
+                    return (b["text"] as? String) ?? (b["content"] as? String)
+                }
+                return nil
+            }
+            text = parts.joined(separator: "\n")
         }
+        if text.isEmpty, let b = m["content"] as? [String: Any], let s = b["text"] as? String {
+            text = s
+        }
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        return ChatMessage(role: role, text: trimmed)
     }
 
     @discardableResult

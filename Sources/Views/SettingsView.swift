@@ -89,8 +89,17 @@ struct SettingsView: View {
                             }
                         }
 
-                        Button("中斷連線 / 離開 Demo") {
-                            model.disconnect(); model.exitDemo(); dismiss()
+                        Button("中斷連線（保留配對）") {
+                            model.disconnect(); dismiss()
+                        }
+                        .font(Theme.ui(15, .semibold))
+                        .foregroundStyle(Theme.ink)
+                        .frame(maxWidth: .infinity, minHeight: 48)
+                        .background(Theme.panel)
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+
+                        Button("移除這台裝置（清除配對）") {
+                            model.forgetDevice(); dismiss()
                         }
                         .font(Theme.ui(15, .semibold))
                         .foregroundStyle(Theme.warn)

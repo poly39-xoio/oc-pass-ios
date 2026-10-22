@@ -43,5 +43,8 @@ struct RootView: View {
         .onOpenURL { url in
             model.connect(pairingCode: url.absoluteString)
         }
+        .task {
+            model.autoConnect()   // 已配對過就直接連(device token 在 Keychain)
+        }
     }
 }

@@ -58,12 +58,9 @@ final class AppModel: ObservableObject {
         }
     }
 
-    /// 斷線 → 指數退避自動重連(1,2,4,8,15 秒上限)
+    /// 斷線 → 指數退避自動重連(1,2,4,8,15 秒上限),沿用原本的憑證(device token)
     private func handleDrop() {
-        guard !reconnecting else { return }
-        guard let url = gatewayURL else { return }
-        let tok = gatewayToken
-        guard !tok.isEmpty else { return }
+        guard !reconnecting, gatewayURL != nil, !gatewayToken.isEmpty else { return }
         reconnecting = true
         state = .connecting
         Task {
@@ -72,43 +69,128 @@ final class AppModel: ObservableObject {
             try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
             reconnecting = false
             if case .ready = state { return }
-            connect(url: url, token: tok)
+            openConnection()
         }
     }
 
     // MARK: - Connect
 
+    private var authMode: AuthMode = .shared("")
+
+    /// QR 內容支援三種:
+    ///  - `oc-pair://<base64url JSON{url,bootstrapToken}>`(官方 setup code,一次性)
+    ///  - `?url=wss://…&bootstrapToken=…`
+    ///  - `?url=wss://…&token=***`(舊式,相容保留)
     func connect(pairingCode: String) {
-        guard let comps = URLComponents(string: pairingCode) else {
+        let raw = pairingCode.trimmingCharacters(in: .whitespacesAndNewlines)
+        if raw.lowercased().hasPrefix("oc-pair://") {
+            let payload = String(raw.dropFirst("oc-pair://".count))
+            if let (url, boot) = Self.decodeSetupCode(payload) {
+                connectBootstrap(url: url, bootstrapToken: boot)
+            } else {
+                state = .failed("配對碼無法解析")
+            }
+            return
+        }
+        guard let comps = URLComponents(string: raw) else {
             state = .failed("QR 內容無法解析"); return
         }
-        let urlStr = comps.queryItems?.first(where: { $0.name == "url" })?.value
-        let tokenValue = comps.queryItems?.first(where: { $0.name == "token" })?.value
-        guard let urlStr, let url = URL(string: urlStr), let tokenValue else {
+        let items = comps.queryItems ?? []
+        let urlStr = items.first(where: { $0.name == "url" })?.value
+        let boot = items.first(where: { $0.name == "bootstrapToken" })?.value
+        let tok = items.first(where: { $0.name == "token" })?.value
+        guard let urlStr, let url = URL(string: urlStr) else {
             state = .failed("QR 內容無法解析"); return
         }
-        connect(url: url, token: tokenValue)
+        if let boot, !boot.isEmpty { connectBootstrap(url: url, bootstrapToken: boot); return }
+        guard let tok, !tok.isEmpty else { state = .failed("QR 內容無法解析"); return }
+        connect(url: url, token: tok)
     }
 
+    /// setup code = base64url(JSON{url,bootstrapToken,…})
+    static func decodeSetupCode(_ raw: String) -> (URL, TokenString)? {
+        var s = raw
+        while s.hasPrefix("/") { s.removeFirst() }
+        guard let data = base64URLDecode(s),
+              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let urlStr = obj["url"] as? String, let url = URL(string: urlStr),
+              let boot = obj["bootstrapToken"] as? String, !boot.isEmpty else { return nil }
+        return (url, boot)
+    }
+
+    static func base64URLDecode(_ s: String) -> Data? {
+        var t = s.replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
+        while t.count % 4 != 0 { t += "=" }
+        return Data(base64Encoded: t)
+    }
+
+    /// 手動輸入 / 舊式 QR:共用 gateway token
     func connect(url: URL, token: TokenString) {
-        state = .connecting
         gatewayURL = url
         gatewayToken = token
+        authMode = .shared(token)
+        CredentialStore.save(url: url, token: token, kind: "shared")
+        openConnection()
+    }
+
+    /// 官方 setup code:用一次性 bootstrap token 換裝置 token
+    private func connectBootstrap(url: URL, bootstrapToken: TokenString) {
+        state = .connecting
         Task {
             do {
                 state = .authenticating
-                try await client.connect(url: url, token: token)
-                currentGateway = Gateway(name: url.host ?? "gateway", url: url, lastSeen: Date())
-                reconnectAttempt = 0
-                state = .ready
-                startHeartbeat()
-                await refreshSessions()
+                let hello = try await client.connect(url: url, auth: .bootstrap(bootstrapToken))
+                guard let op = hello.operatorToken ?? hello.deviceToken, !op.isEmpty else {
+                    state = .failed("配對完成但沒拿到裝置憑證"); return
+                }
+                client.disconnect()
+                gatewayURL = url
+                gatewayToken = op
+                authMode = .device(op)
+                CredentialStore.save(url: url, token: op, kind: "device")
+                openConnection()
             } catch GatewayClient.ClientError.pairingRequired(let id) {
                 state = .pairing(id)
             } catch {
                 state = .failed(error.localizedDescription)
             }
         }
+    }
+
+    private func openConnection() {
+        guard let url = gatewayURL, !gatewayToken.isEmpty else { return }
+        state = .connecting
+        let mode = authMode
+        Task {
+            do {
+                state = .authenticating
+                let hello = try await client.connect(url: url, auth: mode)
+                if case .device = mode, let dt = hello.deviceToken, !dt.isEmpty, dt != gatewayToken {
+                    gatewayToken = dt
+                    CredentialStore.save(url: url, token: dt, kind: "device")
+                }
+                currentGateway = Gateway(name: url.host ?? "gateway", url: url, lastSeen: Date())
+                reconnectAttempt = 0
+                state = .ready
+                startHeartbeat()
+                await refreshSessions()
+                if let cur = currentSession { select(cur) }
+            } catch GatewayClient.ClientError.pairingRequired(let id) {
+                state = .pairing(id)
+            } catch {
+                state = .failed(error.localizedDescription)
+            }
+        }
+    }
+
+    /// App 啟動時自動連線(憑證存在 Keychain)
+    func autoConnect() {
+        guard case .idle = state, !isDemo else { return }
+        guard let stored = CredentialStore.load() else { return }
+        gatewayURL = stored.url
+        gatewayToken = stored.token
+        authMode = (stored.kind == "device") ? .device(stored.token) : .shared(stored.token)
+        openConnection()
     }
 
     /// 每 25 秒 ping 一次;連線已經死掉但 socket 沒觸發 error 時,由這裡發現並重連
@@ -135,14 +217,29 @@ final class AppModel: ObservableObject {
         if case .ready = state { Task { try? await client.ping() } }
     }
 
+    /// 只斷線,不清掉本機對話紀錄(下次連回來還在)
     func disconnect() {
         heartbeatTask?.cancel()
         heartbeatTask = nil
         client.disconnect()
         state = .idle
-        messages = []
-        sessions = []
+    }
+
+    /// 移除這台裝置的憑證(設定頁的「登出」)
+    func forgetDevice() {
+        disconnect()
+        CredentialStore.clear()
+        gatewayURL = nil
+        gatewayToken = ""
         currentSession = nil
+        sessions = []
+        messages = []
+        isDemo = false
+    }
+
+    private func saveTranscript() {
+        guard let key = currentSession?.id, !key.isEmpty else { return }
+        TranscriptCache.save(messages, for: key)
     }
 
     // MARK: - Sessions
@@ -177,13 +274,19 @@ final class AppModel: ObservableObject {
 
     func select(_ session: GatewaySession) {
         currentSession = session
-        messages = []
+        let cached = TranscriptCache.load(for: session.id)
+        messages = cached          // 先顯示本機快取(斷線也看得到)
         Task {
             do {
                 let history = try await client.history(sessionKey: session.id)
-                messages = history
+                if !history.isEmpty, history.count >= cached.count {
+                    messages = history
+                    saveTranscript()
+                }
             } catch {
-                messages = [ChatMessage(role: .system, text: "讀取歷史失敗:\(error.localizedDescription)")]
+                if cached.isEmpty {
+                    messages = [ChatMessage(role: .system, text: "讀取歷史失敗:\(error.localizedDescription)")]
+                }
             }
         }
     }
@@ -199,6 +302,7 @@ final class AppModel: ObservableObject {
         var assistant = ChatMessage(role: .assistant, text: "", pending: true)
         streamingMessageId = assistant.id
         messages.append(assistant)
+        saveTranscript()
 
         Task {
             do {
@@ -228,6 +332,7 @@ final class AppModel: ObservableObject {
                     await MainActor.run {
                         if h.count >= self.messages.count || hasAssistant {
                             self.messages = h
+                            self.saveTranscript()
                         }
                         if hasAssistant { self.streaming = false }
                     }
