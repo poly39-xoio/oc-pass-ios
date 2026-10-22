@@ -15,6 +15,8 @@ final class AppModel: ObservableObject {
     @Published var showConsole = false
     @Published var gatewayURL: URL?
     @Published var gatewayToken: TokenString = ""
+    @Published var creatingSession = false
+    @Published var sessionError: String?
 
     var isConnected: Bool { if case .ready = state { return true }; return false }
 
@@ -25,6 +27,7 @@ final class AppModel: ObservableObject {
 
     private var reconnectAttempt = 0
     private var reconnecting = false
+    private var heartbeatTask: Task<Void, Never>?
 
     init() {
         client.onEvent { [weak self] name, payload in
@@ -69,6 +72,8 @@ final class AppModel: ObservableObject {
 
     func connect(url: URL, token: TokenString) {
         state = .connecting
+        gatewayURL = url
+        gatewayToken = token
         Task {
             do {
                 state = .authenticating
@@ -76,6 +81,7 @@ final class AppModel: ObservableObject {
                 currentGateway = Gateway(name: url.host ?? "gateway", url: url, lastSeen: Date())
                 reconnectAttempt = 0
                 state = .ready
+                startHeartbeat()
                 await refreshSessions()
             } catch GatewayClient.ClientError.pairingRequired(let id) {
                 state = .pairing(id)
@@ -85,7 +91,33 @@ final class AppModel: ObservableObject {
         }
     }
 
+    /// 每 25 秒 ping 一次;連線已經死掉但 socket 沒觸發 error 時,由這裡發現並重連
+    private func startHeartbeat() {
+        heartbeatTask?.cancel()
+        heartbeatTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 25_000_000_000)
+                guard let self, !Task.isCancelled else { return }
+                if case .ready = self.state {
+                    do {
+                        try await self.client.ping()
+                    } catch {
+                        await MainActor.run { self.handleDrop() }
+                        return
+                    }
+                }
+            }
+        }
+    }
+
+    func appDidBecomeActive() {
+        guard gatewayURL != nil, !isDemo else { return }
+        if case .ready = state { Task { try? await client.ping() } }
+    }
+
     func disconnect() {
+        heartbeatTask?.cancel()
+        heartbeatTask = nil
         client.disconnect()
         state = .idle
         messages = []
@@ -99,9 +131,30 @@ final class AppModel: ObservableObject {
         do {
             let list = try await client.listSessions()
             sessions = list
-            if currentSession == nil, let first = list.first { select(first) }
+            sessionError = nil
+            // 不自動挑第一筆:由使用者自己選(或開新對話)
+            if let cur = currentSession, let fresh = list.first(where: { $0.id == cur.id }) {
+                currentSession = fresh
+            }
         } catch {
-            state = .failed(error.localizedDescription)
+            sessionError = error.localizedDescription
+            if case .ready = state { state = .failed(error.localizedDescription) }
+        }
+    }
+
+    func createSession() {
+        guard !creatingSession else { return }
+        creatingSession = true
+        sessionError = nil
+        Task {
+            do {
+                let s = try await client.createSession()
+                await refreshSessions()
+                select(sessions.first(where: { $0.id == s.id }) ?? s)
+            } catch {
+                sessionError = error.localizedDescription
+            }
+            creatingSession = false
         }
     }
 
@@ -120,10 +173,11 @@ final class AppModel: ObservableObject {
 
     // MARK: - Chat
 
-    func send(_ text: String) {
+    func send(_ text: String, attachments: [PendingAttachment] = []) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, let session = currentSession else { return }
-        messages.append(ChatMessage(role: .user, text: trimmed))
+        guard !(trimmed.isEmpty && attachments.isEmpty), let session = currentSession else { return }
+        let shown = trimmed.isEmpty ? (attachments.count == 1 ? "[附件] \(attachments[0].name)" : "[附件] \(attachments.count) 個檔案") : trimmed
+        messages.append(ChatMessage(role: .user, text: shown))
         streaming = true
         var assistant = ChatMessage(role: .assistant, text: "", pending: true)
         streamingMessageId = assistant.id
@@ -131,7 +185,7 @@ final class AppModel: ObservableObject {
 
         Task {
             do {
-                _ = try await client.send(sessionKey: session.id, message: trimmed)
+                _ = try await client.send(sessionKey: session.id, message: trimmed, attachments: attachments)
                 startHistoryPolling(sessionKey: session.id)
             } catch {
                 streaming = false
@@ -142,8 +196,6 @@ final class AppModel: ObservableObject {
                 }
             }
         }
-        _ = assistant
-        assistant.text = ""
     }
 
     /// 送出後每 1.5 秒抓一次歷史,直到看到助理回覆(最長 90 秒)

@@ -6,38 +6,68 @@ struct SessionListView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                ForEach(model.sessions) { s in
-                    Button {
-                        model.select(s)
-                        dismiss()
-                    } label: {
-                        HStack {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(s.title).font(.body).lineLimit(1)
-                                Text(s.id).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+            ZStack {
+                Theme.background
+                ScrollView {
+                    LazyVStack(spacing: 8) {
+                        ForEach(model.sessions) { s in
+                            Button {
+                                model.select(s)
+                                dismiss()
+                            } label: {
+                                HStack(spacing: 10) {
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text(s.title)
+                                            .font(Theme.ui(15, .semibold))
+                                            .foregroundStyle(Theme.ink)
+                                            .lineLimit(1)
+                                        Text(s.id)
+                                            .font(Theme.ui(10))
+                                            .foregroundStyle(Theme.muted)
+                                            .lineLimit(1)
+                                    }
+                                    Spacer()
+                                    if s.unread > 0 {
+                                        Text("\(s.unread)")
+                                            .font(Theme.ui(11, .bold))
+                                            .foregroundStyle(.white)
+                                            .padding(.horizontal, 7).padding(.vertical, 3)
+                                            .background(Theme.warn)
+                                            .clipShape(Capsule())
+                                    }
+                                    if model.currentSession?.id == s.id {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundStyle(Theme.accent)
+                                    }
+                                }
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 12)
+                                .background(Theme.panel)
+                                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                             }
-                            Spacer()
-                            if s.unread > 0 {
-                                Text("\(s.unread)").font(.caption2).padding(4)
-                                    .background(Color.accentColor).cornerRadius(8)
-                            }
-                            if model.currentSession?.id == s.id {
-                                Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
-                            }
+                            .buttonStyle(.plain)
                         }
                     }
+                    .padding(16)
                 }
-            }
-            .refreshable { await model.refreshSessions() }
-            .navigationTitle("工作階段")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) { Button("完成") { dismiss() } }
-            }
-            .overlay {
+                .refreshable { await model.refreshSessions() }
+
                 if model.sessions.isEmpty {
-                    Text("沒有工作階段").foregroundStyle(.secondary)
+                    Text("沒有工作階段").font(Theme.ui(13)).foregroundStyle(.white.opacity(0.75))
                 }
+            }
+            .navigationTitle("工作階段")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        model.createSession()
+                        dismiss()
+                    } label: {
+                        Label("開新對話", systemImage: "plus.bubble")
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) { Button("完成") { dismiss() } }
             }
         }
     }

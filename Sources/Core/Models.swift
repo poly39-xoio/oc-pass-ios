@@ -23,6 +23,16 @@ struct ChatMessage: Identifiable, Codable, Equatable {
     var pending = false
 }
 
+/// 準備送出的附件(照片 / 檔案)
+struct PendingAttachment: Identifiable, Equatable {
+    var id = UUID()
+    var name: String
+    var mimeType: String
+    var data: Data
+
+    var isImage: Bool { mimeType.hasPrefix("image/") }
+}
+
 enum ConnectionState: Equatable {
     case idle
     case connecting

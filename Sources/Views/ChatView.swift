@@ -1,9 +1,17 @@
 import SwiftUI
+import PhotosUI
+import UniformTypeIdentifiers
 
 struct ChatView: View {
     @EnvironmentObject var model: AppModel
     @State private var draft = ""
-    @State private var inputHeight: CGFloat = 38
+    @State private var inputHeight: CGFloat = Theme.inputMin
+    @State private var inputFocused = false
+    @State private var pending: [PendingAttachment] = []
+    @State private var showAttachMenu = false
+    @State private var showPhotoPicker = false
+    @State private var showFileImporter = false
+    @State private var photoItem: PhotosPickerItem?
 
     var body: some View {
         ZStack {
@@ -12,6 +20,7 @@ struct ChatView: View {
                 header
                 if case .connecting = model.state { reconnectingBanner }
                 messageList
+                attachmentChips
                 inputBar
                 bottomBar
             }
@@ -25,10 +34,18 @@ struct ChatView: View {
             Button { model.showSessions = true } label: {
                 Image(systemName: "list.bullet").foregroundStyle(.white)
             }
-            Text(model.currentSession?.title ?? "OC Pass")
-                .font(Theme.ui(16, .bold))
-                .foregroundStyle(.white)
-                .lineLimit(1)
+            VStack(alignment: .leading, spacing: 0) {
+                Text(model.currentSession?.title ?? "OC Pass")
+                    .font(Theme.ui(16, .bold))
+                    .foregroundStyle(.white)
+                    .lineLimit(1)
+                if let id = model.currentSession?.id {
+                    Text(shortKey(id))
+                        .font(Theme.ui(10))
+                        .foregroundStyle(.white.opacity(0.6))
+                        .lineLimit(1)
+                }
+            }
             Spacer()
             if model.isDemo {
                 Text("DEMO")
@@ -45,6 +62,10 @@ struct ChatView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
+    }
+
+    private func shortKey(_ key: String) -> String {
+        key.hasPrefix("agent:main:") ? String(key.dropFirst("agent:main:".count)) : key
     }
 
     private var reconnectingBanner: some View {
@@ -73,6 +94,9 @@ struct ChatView: View {
                 .padding(.vertical, 12)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .scrollDismissesKeyboard(.interactively)
+            .contentShape(Rectangle())
+            .onTapGesture { inputFocused = false }   // 點空白處收起鍵盤(像 Telegram)
             .onChange(of: model.messages.count) { _, _ in
                 if let last = model.messages.last {
                     withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
@@ -81,31 +105,119 @@ struct ChatView: View {
         }
     }
 
+    // MARK: - Attachment chips
+
+    @ViewBuilder
+    private var attachmentChips: some View {
+        if !pending.isEmpty {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(pending) { a in
+                        HStack(spacing: 6) {
+                            Image(systemName: a.isImage ? "photo" : "doc")
+                                .font(.system(size: 12, weight: .semibold))
+                            Text(a.name)
+                                .font(Theme.ui(12, .medium))
+                                .lineLimit(1)
+                            Button {
+                                pending.removeAll { $0.id == a.id }
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .font(.system(size: 13))
+                                    .foregroundStyle(Theme.muted)
+                            }
+                        }
+                        .foregroundStyle(Theme.ink)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(Theme.panel2)
+                        .clipShape(Capsule())
+                    }
+                }
+                .padding(.horizontal, 12)
+            }
+            .padding(.bottom, 6)
+        }
+    }
+
     // MARK: - Input
 
     private var inputBar: some View {
         HStack(alignment: .bottom, spacing: 8) {
-            GrowingTextField(text: $draft, height: $inputHeight)
+            Button {
+                showAttachMenu = true
+            } label: {
+                Image(systemName: "paperclip")
+                    .font(.system(size: 19, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 34, height: 34)
+            }
+
+            GrowingTextField(text: $draft, height: $inputHeight, focused: $inputFocused,
+                             minHeight: Theme.inputMin, maxHeight: Theme.inputMax)
                 .frame(height: inputHeight)
                 .padding(.horizontal, 10)
                 .background(Theme.panel)
                 .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
 
             Button {
-                let text = draft
-                guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
-                draft = ""
-                inputHeight = 38
-                model.send(text)
+                sendNow()
             } label: {
                 Image(systemName: "arrow.up.circle.fill")
                     .font(.system(size: 30))
-                    .foregroundStyle(Theme.accent)
+                    .foregroundStyle(canSend ? Theme.accent : Theme.muted.opacity(0.6))
             }
-            .disabled(draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .disabled(!canSend)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
+        .confirmationDialog("附加檔案", isPresented: $showAttachMenu, titleVisibility: .visible) {
+            Button("照片") { showPhotoPicker = true }
+            Button("檔案") { showFileImporter = true }
+            Button("取消", role: .cancel) {}
+        }
+        .photosPicker(isPresented: $showPhotoPicker, selection: $photoItem, matching: .images)
+        .fileImporter(isPresented: $showFileImporter, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
+            switch result {
+            case .success(let urls): urls.forEach(loadFile)
+            case .failure: break
+            }
+        }
+        .onChange(of: photoItem) { _, item in
+            guard let item else { return }
+            Task {
+                if let data = try? await item.loadTransferable(type: Data.self) {
+                    let name = "photo-\(Int(Date().timeIntervalSince1970)).jpg"
+                    await MainActor.run {
+                        pending.append(PendingAttachment(name: name, mimeType: "image/jpeg", data: data))
+                    }
+                }
+                await MainActor.run { photoItem = nil }
+            }
+        }
+    }
+
+    private var canSend: Bool {
+        !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !pending.isEmpty
+    }
+
+    private func sendNow() {
+        guard canSend else { return }
+        let text = draft
+        let files = pending
+        // 先清空 UI,再送出(避免文字殘留在輸入框、框不縮回)
+        draft = ""
+        pending = []
+        inputHeight = Theme.inputMin
+        model.send(text, attachments: files)
+    }
+
+    private func loadFile(_ url: URL) {
+        let access = url.startAccessingSecurityScopedResource()
+        defer { if access { url.stopAccessingSecurityScopedResource() } }
+        guard let data = try? Data(contentsOf: url) else { return }
+        let mime = UTType(filenameExtension: url.pathExtension)?.preferredMIMEType ?? "application/octet-stream"
+        pending.append(PendingAttachment(name: url.lastPathComponent, mimeType: mime, data: data))
     }
 
     // MARK: - Bottom bar

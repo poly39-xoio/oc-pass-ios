@@ -93,14 +93,51 @@ final class GatewayClient {
     }
 
     @discardableResult
-    func send(sessionKey: String, message: String) async throws -> SendResult {
-        let payload = try await request("chat.send", [
+    func send(sessionKey: String, message: String, attachments: [PendingAttachment] = []) async throws -> SendResult {
+        var params: [String: Any] = [
             "sessionKey": sessionKey,
             "message": message,
             "idempotencyKey": UUID().uuidString
-        ])
+        ]
+        if !attachments.isEmpty {
+            params["attachments"] = attachments.map { a -> [String: Any] in
+                [
+                    "type": a.isImage ? "image" : "file",
+                    "mimeType": a.mimeType,
+                    "fileName": a.name,
+                    "content": a.data.base64EncodedString(),
+                    "sizeBytes": a.data.count
+                ]
+            }
+        }
+        let payload = try await request("chat.send", params)
         let dict = payload as? [String: Any] ?? [:]
         return SendResult(runId: dict["runId"] as? String ?? "")
+    }
+
+    /// 建立新 session(使用者自己在 App 裡開新對話)
+    func createSession(agentId: String = "main", displayName: String? = nil) async throws -> GatewaySession {
+        var params: [String: Any] = ["agentId": agentId]
+        if let displayName, !displayName.isEmpty { params["displayName"] = displayName }
+        let payload = try await request("sessions.create", params)
+        let dict = payload as? [String: Any] ?? [:]
+        let inner = dict["session"] as? [String: Any] ?? dict
+        if let s = GatewaySession.parse(inner) { return s }
+        let key = (inner["key"] as? String) ?? (inner["sessionKey"] as? String) ?? ""
+        guard !key.isEmpty else { throw ClientError.server("sessions.create 沒有回傳 session key") }
+        return GatewaySession(id: key, sessionId: inner["sessionId"] as? String ?? key,
+                              title: inner["displayName"] as? String ?? "新對話",
+                              updatedAt: Date(), unread: 0)
+    }
+
+    /// WebSocket 層 ping,用來偵測「連線看起來還在、其實已經斷了」
+    func ping() async throws {
+        guard let task, isOpen else { throw ClientError.notConnected }
+        try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
+            task.sendPing { err in
+                if let err { cont.resume(throwing: err) } else { cont.resume() }
+            }
+        }
     }
 
     // MARK: - internals

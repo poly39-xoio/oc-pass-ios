@@ -14,6 +14,9 @@ enum Theme {
     static let accentHi = Color(hex: 0x4A5560)
     static let warn    = Color(hex: 0xFF6B5A)
     static let radius: CGFloat = 18
+    static let rowBg   = Color(hex: 0xD6E0E7)
+    static let inputMin: CGFloat = 38
+    static let inputMax: CGFloat = 120
 
     /// Avenir Next(iOS 內建,等同 Lotto3u 的第二順位字體)
     static func ui(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {

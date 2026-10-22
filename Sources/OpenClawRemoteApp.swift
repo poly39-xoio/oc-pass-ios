@@ -3,12 +3,16 @@ import SwiftUI
 @main
 struct OpenClawRemoteApp: App {
     @StateObject private var model = AppModel()
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environmentObject(model)
                 .preferredColorScheme(.light)
+                .onChange(of: scenePhase) { _, phase in
+                    if phase == .active { model.appDidBecomeActive() }
+                }
         }
     }
 }
@@ -19,7 +23,11 @@ struct RootView: View {
     var body: some View {
         Group {
             if model.isConnected {
-                ChatView()
+                if model.currentSession == nil {
+                    SessionPickerView()
+                } else {
+                    ChatView()
+                }
             } else {
                 WelcomeView()
             }
