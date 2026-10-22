@@ -255,6 +255,14 @@ final class GatewayClient {
         }
     }
 
+    /// 只問一個 session 的狀態(比 sessions.list 輕)
+    func sessionRow(key: String) async throws -> GatewaySession? {
+        let payload = try await request("sessions.describe", ["key": key])
+        let dict = payload as? [String: Any] ?? [:]
+        let inner = (dict["session"] as? [String: Any]) ?? dict
+        return GatewaySession.parse(inner)
+    }
+
     func cronJobs() async throws -> [GatewayCronJob] {
         let payload = try await request("cron.list", [:])
         let dict = payload as? [String: Any] ?? [:]

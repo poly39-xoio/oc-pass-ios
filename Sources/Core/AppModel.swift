@@ -375,8 +375,7 @@ final class AppModel: ObservableObject {
                 try? await Task.sleep(nanoseconds: 600_000_000)
                 if Task.isCancelled { return }
 
-                let list = (try? await self.client.listSessions()) ?? []
-                if let row = list.first(where: { $0.id == sessionKey }) {
+                if let row = try? await self.client.sessionRow(key: sessionKey) {
                     if row.hasActiveRun || row.activeRunIds.contains(runId) {
                         sawActive = true
                         idleTicks = 0
@@ -403,8 +402,7 @@ final class AppModel: ObservableObject {
     /// 收到 sessions.changed 時立刻檢查:若已無 active run,馬上收三點、換上結果
     private func finishRunIfIdle(_ sessionKey: String) async {
         guard awaitingReply else { return }
-        let list = (try? await client.listSessions()) ?? []
-        guard let row = list.first(where: { $0.id == sessionKey }) else { return }
+        guard let row = try? await client.sessionRow(key: sessionKey) else { return }
         if !row.hasActiveRun && row.activeRunIds.isEmpty {
             await finishRun(sessionKey)
         }
@@ -488,29 +486,21 @@ final class AppModel: ObservableObject {
         guard isConnected else { return }
         dashboardLoading = true
         dashboardError = nil
-        latencyMs = await client.pingLatency()
-        do {
-            cronJobs = try await client.cronJobs()
-        } catch {
-            cronJobs = []
-        }
-        do {
-            nodes = try await client.nodes()
-        } catch {
-            nodes = []
-        }
-        do {
-            sessions = try await client.listSessions()
-        } catch {
-            dashboardError = error.localizedDescription
-        }
-        if let pairs = try? await client.devicePairs() {
-            pendingApprovals = pairs.pending
-            pairedDevices = pairs.approved
-        }
-        if let models = try? await client.availableModels(), !models.isEmpty {
-            availableModels = models
-        }
+        async let ping = client.pingLatency()
+        async let jobs = client.cronJobs()
+        async let nodeList = client.nodes()
+        async let sessionList = client.listSessions()
+        async let pairs = client.devicePairs()
+        async let modelList = client.availableModels()
+
+        latencyMs = await ping
+        cronJobs = (try? await jobs) ?? []
+        nodes = (try? await nodeList) ?? []
+
+        if let s = try? await sessionList { sessions = s } else { dashboardError = "讀取會話失敗" }
+        if let p = try? await pairs { pendingApprovals = p.pending; pairedDevices = p.approved }
+        if let m = try? await modelList, !m.isEmpty, availableModels.isEmpty { availableModels = m }
+
         dashboardLoading = false
     }
 
