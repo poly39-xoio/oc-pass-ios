@@ -42,6 +42,9 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("設定")
+            .onChange(of: model.state) { _, newValue in
+                if case .ready = newValue { dismiss() }
+            }
             .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("完成") { dismiss() } } }
         }
     }

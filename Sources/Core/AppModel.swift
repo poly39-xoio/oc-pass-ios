@@ -134,9 +134,13 @@ final class AppModel: ObservableObject {
                         }
                         if hasAssistant { self.streaming = false }
                     }
-                    if hasAssistant { return }
+                    if hasAssistant {
+                        await MainActor.run { self.streaming = false }
+                        return
+                    }
                 }
             }
+            await MainActor.run { self.streaming = false }
         }
     }
 
