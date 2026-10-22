@@ -16,6 +16,12 @@ final class AppModel: ObservableObject {
     @Published var gatewayURL: URL?
     @Published var gatewayToken: TokenString = ""
     @Published var creatingSession = false
+    @Published var showDashboard = false
+    @Published var cronJobs: [GatewayCronJob] = []
+    @Published var nodes: [GatewayNode] = []
+    @Published var latencyMs: Double?
+    @Published var dashboardLoading = false
+    @Published var dashboardError: String?
     @Published var sessionError: String?
     /// 使用者自己設定的名字(存在 UserDefaults),用來顯示「你是誰」而不是 Telegram 帳號
     @Published var userName: String = UserDefaults.standard.string(forKey: "ocpass.userName") ?? ""
@@ -274,6 +280,40 @@ final class AppModel: ObservableObject {
         }
     }
 
+    // MARK: - Dashboard
+
+    func loadDashboard() async {
+        guard isConnected else { return }
+        dashboardLoading = true
+        dashboardError = nil
+        latencyMs = await client.pingLatency()
+        do {
+            cronJobs = try await client.cronJobs()
+        } catch {
+            cronJobs = []
+        }
+        do {
+            nodes = try await client.nodes()
+        } catch {
+            nodes = []
+        }
+        do {
+            sessions = try await client.listSessions()
+        } catch {
+            dashboardError = error.localizedDescription
+        }
+        dashboardLoading = false
+    }
+
+    func runJob(_ job: GatewayCronJob) {
+        Task {
+            try? await client.cronRun(jobId: job.id)
+            await loadDashboard()
+        }
+    }
+
+    var totalTokens: Int { sessions.reduce(0) { $0 + $1.totalTokens } }
+
     // MARK: - Demo
 
     func exitDemo() {
@@ -289,7 +329,7 @@ final class AppModel: ObservableObject {
     func startDemo() {
         isDemo = true
         state = .ready
-        sessions = [GatewaySession(id: "demo", sessionId: "demo", title: "Demo session", updatedAt: Date(), unread: 0)]
+        sessions = [GatewaySession(id: "demo", sessionId: "demo", title: "Demo session", updatedAt: Date(), unread: 0, totalTokens: 0)]
         currentSession = sessions.first
         messages = DemoData.messages
     }

@@ -216,26 +216,24 @@ struct ChatView: View {
                 Label("會話", systemImage: "bubble.left.and.bubble.right")
             }
             Spacer()
-            Button { model.showConsole = true } label: {
+            Button { model.showDashboard = true } label: {
                 Label("控制台", systemImage: "rectangle.3.group")
             }
             Spacer()
             Button { model.showSettings = true } label: {
-                Label("設定", systemImage: "slider.horizontal.3")
+                Image(systemName: "link")
+                    .font(.system(size: 17, weight: .semibold))
+                    .frame(width: 34, height: 22)
             }
+            .accessibilityLabel("連線")
         }
         .font(Theme.ui(11, .semibold))
         .foregroundStyle(.white.opacity(0.92))
         .padding(.horizontal, 18)
         .padding(.vertical, 9)
         .background(Theme.accent.opacity(0.92))
-        .sheet(isPresented: $model.showConsole) {
-            if let url = model.gatewayURL {
-                let tk = model.gatewayToken
-                WebConsoleView(baseURL: url, token: tk)
-            } else {
-                Text("尚未連線").padding()
-            }
+        .sheet(isPresented: $model.showDashboard) {
+            DashboardView()
         }
     }
 }

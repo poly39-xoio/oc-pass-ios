@@ -127,7 +127,7 @@ final class GatewayClient {
         guard !key.isEmpty else { throw ClientError.server("sessions.create 沒有回傳 session key") }
         return GatewaySession(id: key, sessionId: inner["sessionId"] as? String ?? key,
                               title: inner["displayName"] as? String ?? "新對話",
-                              updatedAt: Date(), unread: 0)
+                              updatedAt: Date(), unread: 0, totalTokens: 0)
     }
 
     /// WebSocket 層 ping,用來偵測「連線看起來還在、其實已經斷了」
@@ -138,6 +138,37 @@ final class GatewayClient {
                 if let err { cont.resume(throwing: err) } else { cont.resume() }
             }
         }
+    }
+
+    // MARK: - Dashboard
+
+    /// 量一次 ping 往返時間(毫秒)
+    func pingLatency() async -> Double? {
+        let start = Date()
+        do {
+            try await ping()
+            return Date().timeIntervalSince(start) * 1000
+        } catch {
+            return nil
+        }
+    }
+
+    func cronJobs() async throws -> [GatewayCronJob] {
+        let payload = try await request("cron.list", [:])
+        let dict = payload as? [String: Any] ?? [:]
+        let raw = (dict["jobs"] as? [[String: Any]]) ?? (dict["items"] as? [[String: Any]]) ?? []
+        return raw.compactMap(GatewayCronJob.parse)
+    }
+
+    func cronRun(jobId: String) async throws {
+        _ = try await request("cron.run", ["jobId": jobId, "runMode": "force"])
+    }
+
+    func nodes() async throws -> [GatewayNode] {
+        let payload = try await request("node.list", [:])
+        let dict = payload as? [String: Any] ?? [:]
+        let raw = (dict["nodes"] as? [[String: Any]]) ?? (dict["items"] as? [[String: Any]]) ?? []
+        return raw.compactMap(GatewayNode.parse)
     }
 
     // MARK: - internals
