@@ -372,10 +372,12 @@ final class AppModel: ObservableObject {
                     if sawActive && idleTicks >= 1 { await self.finishRun(sessionKey); return }
                 }
 
-                // 後備:回覆長度連續兩次不變 → 視為完成
+                // 後備:只有在「最後一則是助理訊息」且內容長度穩定時才算完成
                 if let h = try? await self.client.history(sessionKey: sessionKey), !h.isEmpty {
-                    let len = h.reduce(0) { $0 + $1.text.count }
-                    if len == lastLen && len > 0 { stableTicks += 1 } else { stableTicks = 0 }
+                    let visible = self.collapsed(h)
+                    let len = visible.reduce(0) { $0 + $1.text.count }
+                    let endsWithAssistant = visible.last?.role == .assistant
+                    if endsWithAssistant && len == lastLen && len > 0 { stableTicks += 1 } else { stableTicks = 0 }
                     lastLen = len
                     if stableTicks >= 2 { await self.finishRun(sessionKey); return }
                 }
@@ -397,7 +399,7 @@ final class AppModel: ObservableObject {
     private func finishRun(_ sessionKey: String) async {
         // 執行結束 ≠ 回覆已寫進歷史:這裡要等到「最後一則是助理訊息」才收三點,
         // 否則會出現「下一題送出時,上一題答案才跳出來」。
-        for _ in 0..<10 {                       // 最多約 5 秒
+        for _ in 0..<20 {                       // 最多約 10 秒
             if let h = try? await client.history(sessionKey: sessionKey), !h.isEmpty {
                 let c = collapsed(h)
                 if c.last?.role == .assistant {
