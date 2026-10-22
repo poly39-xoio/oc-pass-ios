@@ -20,6 +20,7 @@ final class GatewayClient {
     private var challengeWaiter: CheckedContinuation<String, Error>?
     private var eventHandler: ((String, Any?) -> Void)?
     private(set) var isOpen = false
+    var onDisconnect: (() -> Void)?
 
     func onEvent(_ h: @escaping (String, Any?) -> Void) { eventHandler = h }
 
@@ -128,9 +129,11 @@ final class GatewayClient {
             guard let self else { return }
             switch result {
             case .failure(let err):
+                let wasOpen = self.isOpen
                 self.isOpen = false
                 self.pending.values.forEach { $0.resume(throwing: err) }
                 self.pending.removeAll()
+                if wasOpen { self.onDisconnect?() }
             case .success(let message):
                 self.handle(message)
                 self.receiveLoop()

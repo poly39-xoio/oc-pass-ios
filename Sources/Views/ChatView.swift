@@ -8,6 +8,7 @@ struct ChatView: View {
     var body: some View {
         VStack(spacing: 0) {
             header
+            if case .connecting = model.state { reconnectingBanner }
             messageList
             inputBar
             bottomBar
@@ -40,6 +41,16 @@ struct ChatView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
+    }
+
+    private var reconnectingBanner: some View {
+        HStack(spacing: 8) {
+            ProgressView().controlSize(.small)
+            Text("連線中斷,正在重連…").font(.caption)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 6)
+        .background(Color.orange.opacity(0.18))
     }
 
     // MARK: - Messages

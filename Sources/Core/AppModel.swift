@@ -23,9 +23,31 @@ final class AppModel: ObservableObject {
     private var streamingMessageId: UUID?
     private var pollTask: Task<Void, Never>?
 
+    private var reconnectAttempt = 0
+    private var reconnecting = false
+
     init() {
         client.onEvent { [weak self] name, payload in
             Task { @MainActor in self?.handle(event: name, payload: payload) }
+        }
+        client.onDisconnect { [weak self] in
+            Task { @MainActor in self?.handleDrop() }
+        }
+    }
+
+    /// 斷線 → 指數退避自動重連(1,2,4,8,15 秒上限)
+    private func handleDrop() {
+        guard !reconnecting else { return }
+        guard let url = gatewayURL, let tok = gatewayToken, !tok.isEmpty else { return }
+        reconnecting = true
+        state = .connecting
+        Task {
+            let delay = min(15.0, pow(2.0, Double(reconnectAttempt)))
+            reconnectAttempt += 1
+            try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+            reconnecting = false
+            if case .ready = state { return }
+            connect(url: url, token: tok)
         }
     }
 
@@ -50,6 +72,7 @@ final class AppModel: ObservableObject {
                 state = .authenticating
                 try await client.connect(url: url, token: token)
                 currentGateway = Gateway(name: url.host ?? "gateway", url: url, lastSeen: Date())
+                reconnectAttempt = 0
                 state = .ready
                 await refreshSessions()
             } catch GatewayClient.ClientError.pairingRequired(let id) {
