@@ -229,7 +229,7 @@ final class GatewayClient {
         return GatewaySession(id: key, sessionId: inner["sessionId"] as? String ?? key,
                               title: inner["displayName"] as? String ?? "新對話",
                               updatedAt: Date(), unread: 0, totalTokens: 0,
-                              hasActiveRun: false, activeRunIds: [])
+                              hasActiveRun: false, activeRunIds: [], model: nil)
     }
 
     /// WebSocket 層 ping,用來偵測「連線看起來還在、其實已經斷了」
@@ -271,6 +271,62 @@ final class GatewayClient {
         let dict = payload as? [String: Any] ?? [:]
         let raw = (dict["nodes"] as? [[String: Any]]) ?? (dict["items"] as? [[String: Any]]) ?? []
         return raw.compactMap(GatewayNode.parse)
+    }
+
+
+    // MARK: - Management (dashboard)
+
+    func setJobEnabled(jobId: String, enabled: Bool) async throws {
+        _ = try await request("cron.update", ["jobId": jobId, "enabled": enabled])
+    }
+
+    func jobRuns(jobId: String, limit: Int = 5) async throws -> [[String: Any]] {
+        let payload = try await request("cron.runs", ["jobId": jobId, "limit": limit])
+        let dict = payload as? [String: Any] ?? [:]
+        return (dict["runs"] as? [[String: Any]]) ?? []
+    }
+
+    /// 待核准 + 已配對裝置
+    func devicePairs() async throws -> (pending: [PendingApproval], approved: [PairedDevice]) {
+        let payload = try await request("device.pair.list", [:])
+        let dict = payload as? [String: Any] ?? [:]
+        let reqRaw = (dict["pending"] as? [[String: Any]])
+            ?? (dict["requests"] as? [[String: Any]])
+            ?? (dict["pendingRequests"] as? [[String: Any]]) ?? []
+        let devRaw = (dict["paired"] as? [[String: Any]])
+            ?? (dict["devices"] as? [[String: Any]])
+            ?? (dict["approved"] as? [[String: Any]]) ?? []
+        return (reqRaw.compactMap(PendingApproval.parse), devRaw.compactMap(PairedDevice.parse))
+    }
+
+    func approveDevice(requestId: String) async throws {
+        _ = try await request("device.pair.approve", ["requestId": requestId])
+    }
+
+    func rejectDevice(requestId: String) async throws {
+        _ = try await request("device.pair.reject", ["requestId": requestId])
+    }
+
+    func removeDevice(deviceId: String) async throws {
+        _ = try await request("device.pair.remove", ["deviceId": deviceId])
+    }
+
+    func availableModels() async throws -> [String] {
+        let payload = try await request("models.list", [:])
+        let dict = payload as? [String: Any] ?? [:]
+        if let list = dict["models"] as? [[String: Any]] {
+            return list.compactMap { m in
+                if let id = m["id"] as? String { return id }
+                if let p = m["provider"] as? String, let id = m["model"] as? String { return p + "/" + id }
+                return nil
+            }
+        }
+        if let list = dict["models"] as? [String] { return list }
+        return []
+    }
+
+    func patchSessionModel(sessionKey: String, model: String) async throws {
+        _ = try await request("sessions.patch", ["key": sessionKey, "model": model])
     }
 
     // MARK: - internals

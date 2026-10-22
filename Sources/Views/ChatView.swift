@@ -265,7 +265,7 @@ struct ChatView: View {
             }
             .accessibilityLabel("連線")
         }
-        .font(Theme.ui(10.5, .semibold))
+        .font(Theme.ui(12, .semibold))
         .foregroundStyle(.white.opacity(0.92))
         .padding(.horizontal, 18)
         .padding(.vertical, 6)

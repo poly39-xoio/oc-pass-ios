@@ -24,6 +24,9 @@ final class AppModel: ObservableObject {
     @Published var latencyMs: Double?
     @Published var dashboardLoading = false
     @Published var dashboardError: String?
+    @Published var pendingApprovals: [PendingApproval] = []
+    @Published var pairedDevices: [PairedDevice] = []
+    @Published var availableModels: [String] = []
     @Published var sessionError: String?
     @Published var gatewayVersion: String = ""
     /// 使用者自己設定的名字(存在 UserDefaults),用來顯示「你是誰」而不是 Telegram 帳號
@@ -495,6 +498,13 @@ final class AppModel: ObservableObject {
         } catch {
             dashboardError = error.localizedDescription
         }
+        if let pairs = try? await client.devicePairs() {
+            pendingApprovals = pairs.pending
+            pairedDevices = pairs.approved
+        }
+        if let models = try? await client.availableModels(), !models.isEmpty {
+            availableModels = models
+        }
         dashboardLoading = false
     }
 
@@ -506,6 +516,44 @@ final class AppModel: ObservableObject {
     }
 
     var totalTokens: Int { sessions.reduce(0) { $0 + $1.totalTokens } }
+
+    // MARK: - Dashboard actions
+
+    func toggleJob(_ job: GatewayCronJob) {
+        Task {
+            try? await client.setJobEnabled(jobId: job.id, enabled: !job.enabled)
+            await loadDashboard()
+        }
+    }
+
+    func approve(_ approval: PendingApproval) {
+        Task {
+            try? await client.approveDevice(requestId: approval.id)
+            await loadDashboard()
+        }
+    }
+
+    func reject(_ approval: PendingApproval) {
+        Task {
+            try? await client.rejectDevice(requestId: approval.id)
+            await loadDashboard()
+        }
+    }
+
+    func remove(_ device: PairedDevice) {
+        Task {
+            try? await client.removeDevice(deviceId: device.id)
+            await loadDashboard()
+        }
+    }
+
+    func setModel(_ model: String) {
+        guard let key = currentSession?.id else { return }
+        Task {
+            try? await client.patchSessionModel(sessionKey: key, model: model)
+            await loadDashboard()
+        }
+    }
 
     // MARK: - Demo
 
@@ -522,7 +570,7 @@ final class AppModel: ObservableObject {
     func startDemo() {
         isDemo = true
         state = .ready
-        sessions = [GatewaySession(id: "demo", sessionId: "demo", title: "Demo session", updatedAt: Date(), unread: 0, totalTokens: 0, hasActiveRun: false, activeRunIds: [])]
+        sessions = [GatewaySession(id: "demo", sessionId: "demo", title: "Demo session", updatedAt: Date(), unread: 0, totalTokens: 0, hasActiveRun: false, activeRunIds: [], model: nil)]
         currentSession = sessions.first
         messages = DemoData.messages
     }

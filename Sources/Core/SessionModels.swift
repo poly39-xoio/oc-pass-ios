@@ -9,6 +9,7 @@ struct GatewaySession: Identifiable, Equatable {
     let totalTokens: Int
     let hasActiveRun: Bool
     let activeRunIds: [String]
+    let model: String?
 
     static func parse(_ dict: [String: Any]) -> GatewaySession? {
         guard let key = dict["key"] as? String else { return nil }
@@ -22,7 +23,8 @@ struct GatewaySession: Identifiable, Equatable {
                               unread: dict["unread"] as? Int ?? 0,
                               totalTokens: (dict["totalTokens"] as? Int) ?? Int(dict["totalTokens"] as? Double ?? 0),
                               hasActiveRun: dict["hasActiveRun"] as? Bool ?? false,
-                              activeRunIds: (dict["activeRunIds"] as? [String]) ?? [])
+                              activeRunIds: (dict["activeRunIds"] as? [String]) ?? [],
+                              model: (dict["model"] as? String) ?? (dict["modelId"] as? String))
     }
 }
 
