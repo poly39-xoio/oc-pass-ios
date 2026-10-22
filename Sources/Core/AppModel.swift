@@ -399,7 +399,7 @@ final class AppModel: ObservableObject {
     private func finishRun(_ sessionKey: String) async {
         // 執行結束 ≠ 回覆已寫進歷史:這裡要等到「最後一則是助理訊息」才收三點,
         // 否則會出現「下一題送出時,上一題答案才跳出來」。
-        for _ in 0..<20 {                       // 最多約 10 秒
+        for _ in 0..<120 {                      // 最多約 60 秒(答案沒到就一直閃)
             if let h = try? await client.history(sessionKey: sessionKey), !h.isEmpty {
                 let c = collapsed(h)
                 if c.last?.role == .assistant {
