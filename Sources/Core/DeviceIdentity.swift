@@ -53,16 +53,31 @@ extension Data {
     }
 }
 
-/// 先把金鑰存 Keychain(骨架用最簡實作)
+/// ed25519 裝置私鑰:存在 Keychain(系統加密)。
+/// 舊版存在 UserDefaults → 首次讀取時自動搬進 Keychain 並刪掉舊值(不用重新配對)。
 enum DeviceStore {
-    private static let key = "io.xoio.ocpass.device"
+    private static let legacyKey = "io.xoio.ocpass.device"
+    private static let keychainKey = "device.privateKey"
+
     static func save(_ id: DeviceIdentity) {
-        let payload = ["priv": id.privateKey.rawRepresentation.base64EncodedString()]
-        UserDefaults.standard.set(payload, forKey: key)   // TODO: 移到 Keychain
+        Keychain.set(id.privateKey.rawRepresentation.base64EncodedString(), for: keychainKey)
+        UserDefaults.standard.removeObject(forKey: legacyKey)
     }
+
     static func load() -> DeviceIdentity? {
-        guard let d = UserDefaults.standard.dictionary(forKey: key),
-              let b64 = d["priv"] as? String, let raw = Data(base64Encoded: b64),
+        if let b64 = Keychain.get(keychainKey), let id = make(from: b64) { return id }
+        // 一次性遷移:舊版 UserDefaults
+        if let d = UserDefaults.standard.dictionary(forKey: legacyKey),
+           let b64 = d["priv"] as? String, let id = make(from: b64) {
+            Keychain.set(b64, for: keychainKey)
+            UserDefaults.standard.removeObject(forKey: legacyKey)
+            return id
+        }
+        return nil
+    }
+
+    private static func make(from b64: String) -> DeviceIdentity? {
+        guard let raw = Data(base64Encoded: b64),
               let key = try? Curve25519.Signing.PrivateKey(rawRepresentation: raw) else { return nil }
         return DeviceIdentity(deviceId: sha256Hex(key.publicKey.rawRepresentation),
                               publicKeyRaw: key.publicKey.rawRepresentation,
