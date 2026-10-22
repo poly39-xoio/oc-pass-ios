@@ -28,7 +28,17 @@ struct DashboardView: View {
             .navigationTitle("控制台")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) { Button(L("完成")) { dismiss() } }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { dismiss() } label: {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(Theme.accent)
+                            .frame(width: 30, height: 30)
+                            .background(Theme.panel2)
+                            .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                    }
+                    .accessibilityLabel(L("完成"))
+                }
             }
             .task { await model.loadDashboard() }
             .confirmationDialog("撤銷這台裝置？", isPresented: Binding(

@@ -201,12 +201,9 @@ struct ChatView: View {
             Button {
                 sendNow()
             } label: {
-                Image(systemName: "arrow.up")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(.white)
-                    .frame(width: 30, height: 30)
-                    .background(canSend ? Theme.accent : Theme.muted.opacity(0.55))
-                    .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                Image(systemName: "arrow.up.circle.fill")
+                    .font(.system(size: 27))
+                    .foregroundStyle(canSend ? Theme.accent : Theme.muted.opacity(0.6))
             }
             .disabled(!canSend)
         }

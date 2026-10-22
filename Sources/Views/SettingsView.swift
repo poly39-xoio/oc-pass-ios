@@ -149,8 +149,15 @@ struct SettingsView: View {
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button(L("完成")) { dismiss() }
-                        .font(Theme.ui(15, .semibold))
+                    Button { dismiss() } label: {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(Theme.accent)
+                            .frame(width: 30, height: 30)
+                            .background(Theme.panel2)
+                            .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                    }
+                    .accessibilityLabel(L("完成"))
                 }
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
