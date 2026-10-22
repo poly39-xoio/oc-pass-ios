@@ -71,7 +71,7 @@ struct SettingsView: View {
 
                         section(L("使用說明")) {
                             VStack(alignment: .leading, spacing: 8) {
-                                Text(L("OC Pass 是 OpenClaw gateway 的遙控器:你的對話與檔案只會送到你自己的 gateway,不經過我們。"))
+                                Text(L("OC Pass 是針對 OpenClaw Gateway 所設計的優化器。"))
                                 Text(L("1. 在你的電腦或伺服器安裝 OpenClaw,並啟動 gateway。"))
                                 Text(L("2. 在 gateway 上執行 openclaw qr,用手機掃描產生的 QR。"))
                                 Text(L("3. 沒有網域或公網 IP?可在設定改用 XOIO Relay(訂閱制)。"))
@@ -141,21 +141,15 @@ struct SettingsView: View {
                         model.setLanguage(Language.isEnglish ? "zh" : "en")
                     } label: {
                         Text(Language.isEnglish ? "中" : "EN")
-                            .font(Theme.ui(13, .bold))
-                            .foregroundStyle(Theme.accent)
-                            .frame(width: 44, height: 30)
-                            .background(Theme.panel2)
-                            .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                            .font(Theme.ui(14, .bold))
+                            .frame(width: 34, height: 30)
                     }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { dismiss() } label: {
                         Image(systemName: "checkmark")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(Theme.accent)
+                            .font(.system(size: 14, weight: .semibold))
                             .frame(width: 30, height: 30)
-                            .background(Theme.panel2)
-                            .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
                     }
                     .accessibilityLabel(L("完成"))
                 }

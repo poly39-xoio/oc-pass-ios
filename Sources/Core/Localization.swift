@@ -50,8 +50,8 @@ private let EN: [String: String] = [
     "太大": "Too large", "這個檔案超過 18 MB,請壓縮後再傳": "This file exceeds 18 MB — please compress it first.",
     "無法讀取這個檔案": "Could not read this file",
     // 說明
-    "OC Pass 是 OpenClaw gateway 的遙控器:你的對話與檔案只會送到你自己的 gateway,不經過我們。":
-        "OC Pass is a remote for your OpenClaw gateway. Your chats and files go only to your own gateway — never through us.",
+    "OC Pass 是針對 OpenClaw Gateway 所設計的優化器。":
+        "OC Pass is an optimizer designed for OpenClaw Gateway.",
     "1. 在你的電腦或伺服器安裝 OpenClaw,並啟動 gateway。":
         "1. Install OpenClaw on your computer or server and start the gateway.",
     "2. 在 gateway 上執行 openclaw qr,用手機掃描產生的 QR。":

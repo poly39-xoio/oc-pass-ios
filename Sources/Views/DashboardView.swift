@@ -31,11 +31,8 @@ struct DashboardView: View {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button { dismiss() } label: {
                         Image(systemName: "checkmark")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(Theme.accent)
+                            .font(.system(size: 14, weight: .semibold))
                             .frame(width: 30, height: 30)
-                            .background(Theme.panel2)
-                            .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
                     }
                     .accessibilityLabel(L("完成"))
                 }
