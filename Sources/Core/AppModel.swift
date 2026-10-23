@@ -143,6 +143,49 @@ final class AppModel: ObservableObject {
         return Data(base64Encoded: t)
     }
 
+    /// Relay 配對碼:
+    ///  - `oc-relay://<base64url JSON{url, token}>`
+    ///  - `wss://xoio.io/relay/app/<channel>?k=<secret>`
+    ///  - `<channel>?k=<secret>`
+    static func parseRelayURL(_ raw: String) -> URL? {
+        let s = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if s.lowercased().hasPrefix("oc-relay://") {
+            let payload = String(s.dropFirst("oc-relay://".count))
+            if let data = base64URLDecode(payload),
+               let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let urlStr = obj["url"] as? String, let u = URL(string: urlStr) { return u }
+            return nil
+        }
+        if s.lowercased().hasPrefix("wss://") || s.lowercased().hasPrefix("ws://") {
+            return URL(string: s)
+        }
+        if s.contains("?k=") {
+            return URL(string: "wss://xoio.io/relay/app/" + s)
+        }
+        return nil
+    }
+
+    /// 從配對碼取出內嵌的 gateway token(沒有就回 nil)
+    static func relayEmbeddedToken(_ raw: String) -> TokenString? {
+        let s = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard s.lowercased().hasPrefix("oc-relay://") else { return nil }
+        let payload = String(s.dropFirst("oc-relay://".count))
+        guard let data = base64URLDecode(payload),
+              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let t = obj["token"] as? String, !t.isEmpty else { return nil }
+        return t
+    }
+
+    /// 用 Relay 連線(配對碼內含 token 時可省略)
+    func connectRelay(code: String, token tk: TokenString = "") {
+        let effective = tk.isEmpty ? (Self.relayEmbeddedToken(code) ?? "") : tk
+        guard let url = Self.parseRelayURL(code) else {
+            state = .failed("Relay 配對碼無法解析"); return
+        }
+        guard !effective.isEmpty else { state = .failed("配對碼沒有 token,請手動輸入"); return }
+        connect(url: url, token: effective)
+    }
+
     /// 手動輸入 / 舊式 QR:共用 gateway token
     func connect(url: URL, token: TokenString) {
         gatewayURL = url

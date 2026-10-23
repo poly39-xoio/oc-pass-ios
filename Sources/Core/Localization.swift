@@ -32,7 +32,8 @@ private let EN: [String: String] = [
     // 設定
     "使用者名稱": "Your name", "你的名字": "Your name",
     "只顯示在這支 App(App 裡的名字),不會改到 gateway 帳號": "Shown only in this app; does not change your gateway account",
-    "手動連線": "Manual connection", "Gateway token": "Gateway token",
+    "手動連線": "Manual connection", "自己的網址": "My URL", "貼上 Relay 配對碼": "Paste relay code",
+    "Relay 配對碼無法解析": "Cannot parse the relay code", "請貼上 Relay 配對碼": "Paste a relay code", "Gateway token": "Gateway token",
     "網址格式不對（例:wss://xoio.io/oc）": "Invalid URL (e.g. wss://xoio.io/oc)",
     "請貼上 Gateway token": "Please paste a gateway token",
     "隱私政策": "Privacy Policy", "版本": "Version",

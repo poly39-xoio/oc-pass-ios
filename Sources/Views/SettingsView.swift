@@ -9,6 +9,8 @@ struct SettingsView: View {
     @State private var token: TokenString = ""
     @State private var localError: String?
     @State private var showHelp = false
+    @State private var mode = "direct"
+    @State private var relayCode = ""
 
     var body: some View {
         let _ = model.languageRevision
@@ -35,6 +37,21 @@ struct SettingsView: View {
 
                         section(L("手動連線")) {
                             VStack(spacing: 10) {
+                                Picker("", selection: $mode) {
+                                    Text(L("自己的網址")).tag("direct")
+                                    Text("XOIO Relay").tag("relay")
+                                }
+                                .pickerStyle(.segmented)
+
+                                if mode == "relay" {
+                                    field("relay") {
+                                        TextField(L("貼上 Relay 配對碼"), text: $relayCode)
+                                            .textInputAutocapitalization(.never)
+                                            .autocorrectionDisabled()
+                                            .font(Theme.ui(14))
+                                            .foregroundStyle(Theme.ink)
+                                    }
+                                } else {
                                 field("url") {
                                     TextField("wss://your-gateway/oc", text: $url)
                                         .textInputAutocapitalization(.never)
@@ -42,6 +59,7 @@ struct SettingsView: View {
                                         .keyboardType(.URL)
                                         .font(Theme.ui(15))
                                         .foregroundStyle(Theme.ink)
+                                }
                                 }
                                 field("token") {
                                     SecureField("Gateway token", text: $token)
@@ -200,6 +218,14 @@ struct SettingsView: View {
 
     private func connect() {
         localError = nil
+        let tk0 = token.trimmingCharacters(in: .whitespacesAndNewlines)
+        if mode == "relay" {
+            guard !relayCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                localError = L("請貼上 Relay 配對碼"); return
+            }
+            model.connectRelay(code: relayCode, token: tk0)
+            return
+        }
         guard let normalized = normalize(url) else {
             localError = L("網址格式不對（例:wss://xoio.io/oc）")
             return
