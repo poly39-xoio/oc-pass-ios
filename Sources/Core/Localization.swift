@@ -123,7 +123,7 @@ private let EN: [String: String] = [
     "填你自己 gateway 的位址；沒有網域或公網 IP，請用下面的 XOIO Relay。":
         "Enter your own gateway address. If you have no domain or public IP, use XOIO Relay below.",
     "用電腦執行 openclaw qr，掃它產生的 QR": "Run openclaw qr on your computer and scan its QR",
-    "自己填位址與 token（進階）": "Enter URL and token yourself (advanced)",
+    "自己填 URL 與 token（進階）": "Enter URL and token yourself (advanced)",
     "不用連線，先看看介面": "No connection needed — take a look",
     "退出": "Exit",
     "讀取會話失敗": "Couldn't load chats",

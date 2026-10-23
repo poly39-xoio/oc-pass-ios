@@ -53,7 +53,7 @@ struct WelcomeView: View {
                     } label: {
                         VStack(spacing: 3) {
                             Text(L("手動輸入 gateway")).font(Theme.ui(16, .semibold))
-                            Text(L("自己填位址與 token（進階）")).font(Theme.ui(11)).opacity(0.75)
+                            Text(L("自己填 URL 與 token（進階）")).font(Theme.ui(11)).opacity(0.75)
                         }
                             .foregroundStyle(Theme.ink)
                             .frame(maxWidth: .infinity, minHeight: 56)
