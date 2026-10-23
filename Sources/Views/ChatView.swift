@@ -13,7 +13,7 @@ struct ChatView: View {
     @State private var showAttachMenu = false
     @State private var showPhotoPicker = false
     @State private var showFileImporter = false
-    @State private var photoItem: PhotosPickerItem?
+    @State private var photoItems: [PhotosPickerItem] = []
     @State private var sizeWarning: String?
     @StateObject private var speech = SpeechInput()
     @State private var dictationBase = ""
@@ -212,33 +212,31 @@ struct ChatView: View {
     @ViewBuilder
     private var attachmentChips: some View {
         if !pending.isEmpty {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(pending) { a in
-                        HStack(spacing: 6) {
-                            Image(systemName: a.isImage ? "photo" : "doc")
-                                .font(.system(size: 12, weight: .semibold))
-                            Text(a.name)
-                                .font(Theme.ui(12, .medium))
-                                .lineLimit(1)
-                            Button {
-                                pending.removeAll { $0.id == a.id }
-                            } label: {
-                                Image(systemName: "xmark.circle.fill")
-                                    .font(.system(size: 13))
-                                    .foregroundStyle(Theme.muted)
-                            }
+            VStack(alignment: .trailing, spacing: 6) {
+                ForEach(pending) { a in
+                    HStack(spacing: 6) {
+                        Image(systemName: a.isImage ? "photo" : "doc")
+                            .font(.system(size: 12, weight: .semibold))
+                        Text(a.name)
+                            .font(Theme.ui(12, .medium))
+                            .lineLimit(1)
+                        Button {
+                            pending.removeAll { $0.id == a.id }
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .font(.system(size: 13))
+                                .foregroundStyle(Theme.muted)
                         }
-                        .foregroundStyle(Theme.ink)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 6)
-                        .background(Theme.panel2)
-                        .clipShape(Capsule())
                     }
+                    .foregroundStyle(Theme.ink)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Theme.panel2)
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 }
-                .padding(.horizontal, 12)
-                .frame(minWidth: UIScreen.main.bounds.width, alignment: .trailing)
             }
+            .frame(maxWidth: .infinity, alignment: .trailing)
+            .padding(.horizontal, 12)
             .padding(.bottom, 6)
         }
     }
@@ -288,25 +286,27 @@ struct ChatView: View {
             Button(L("檔案")) { showFileImporter = true }
             Button("取消", role: .cancel) {}
         }
-        .photosPicker(isPresented: $showPhotoPicker, selection: $photoItem, matching: .images)
+        .photosPicker(isPresented: $showPhotoPicker, selection: $photoItems, maxSelectionCount: 6, matching: .images)
         .fileImporter(isPresented: $showFileImporter, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
             switch result {
             case .success(let urls): urls.forEach(loadFile)
             case .failure: break
             }
         }
-        .onChange(of: photoItem) { _, item in
-            guard let item else { return }
+        .onChange(of: photoItems) { _, items in
+            guard !items.isEmpty else { return }
             Task {
-                if let data = try? await item.loadTransferable(type: Data.self) {
-                    // 壓縮放到背景執行,避免大圖卡住主執行緒被系統砍掉
-                    let att = await Task.detached { Self.makeImageAttachment(data) }.value
-                    await MainActor.run {
-                        if let att { pending.append(att) }
-                        else { sizeWarning = L("無法讀取這個檔案") }
+                var added: [PendingAttachment] = []
+                for item in items {
+                    if let data = try? await item.loadTransferable(type: Data.self) {
+                        let att = await Task.detached { Self.makeImageAttachment(data) }.value
+                        if let att { added.append(att) } else { await MainActor.run { sizeWarning = L("無法讀取這個檔案") } }
                     }
                 }
-                await MainActor.run { photoItem = nil }
+                await MainActor.run {
+                    pending.append(contentsOf: added)
+                    photoItems = []
+                }
             }
         }
     }
@@ -442,27 +442,20 @@ struct MessageBubble: View {
         HStack {
             if message.role == .user { Spacer(minLength: 40) }
             VStack(alignment: .leading, spacing: 6) {
-                if let data = message.imageData, let ui = UIImage(data: data) {
-                    Image(uiImage: ui)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(maxWidth: 220, maxHeight: 260)
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                        .contextMenu {
-                            Button {
-                                UIPasteboard.general.image = ui
-                            } label: {
-                                Label(L("複製圖片"), systemImage: "doc.on.doc")
+                let imgs: [Data] = message.imageDatas ?? (message.imageData.map { [$0] } ?? [])
+                ForEach(imgs.indices, id: \.self) { idx in
+                    if let ui = UIImage(data: imgs[idx]) {
+                        Image(uiImage: ui)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(maxWidth: 220, maxHeight: 260)
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .contextMenu {
+                                Button { UIPasteboard.general.image = ui } label: { Label(L("複製圖片"), systemImage: "doc.on.doc") }
+                                Button { onShare([ui]) } label: { Label(L("分享"), systemImage: "square.and.arrow.up") }
+                                Button(role: .destructive) { onDelete() } label: { Label(L("刪除照片"), systemImage: "trash") }
                             }
-                            Button {
-                                onShare([ui])
-                            } label: {
-                                Label(L("分享"), systemImage: "square.and.arrow.up")
-                            }
-                            Button(role: .destructive) { onDelete() } label: {
-                                Label(L("刪除照片"), systemImage: "trash")
-                            }
-                        }
+                    }
                 }
                 if let path = message.attachmentPath, FileManager.default.fileExists(atPath: path) {
                     fileCard(path: path, name: message.attachmentName ?? URL(fileURLWithPath: path).lastPathComponent)

@@ -363,6 +363,7 @@ final class AppModel: ObservableObject {
             messages[i].attachmentPath = nil
             messages[i].attachmentName = nil
             messages[i].imageData = nil
+            messages[i].imageDatas = nil
         }
         saveTranscript()
     }
@@ -370,18 +371,20 @@ final class AppModel: ObservableObject {
     /// 歷史刷新後,把本機記住的圖片/檔案接回對應訊息。
     /// 先比文字;文字對不上(gateway 歷史裡附件訊息是空字串)時,依使用者訊息順序配回去。
     private func mergeLocalAttachments(_ list: [ChatMessage]) -> [ChatMessage] {
-        var locals = messages.filter { ($0.imageData != nil || $0.attachmentPath != nil) && $0.role == .user }
+        var locals = messages.filter { ($0.imageData != nil || $0.imageDatas != nil || $0.attachmentPath != nil) && $0.role == .user }
         guard !locals.isEmpty else { return list }
         var out = list
         for i in out.indices where out[i].role == .user {
             if let j = locals.firstIndex(where: { !$0.text.isEmpty && $0.text == out[i].text }) {
                 out[i].imageData = locals[j].imageData
+                out[i].imageDatas = locals[j].imageDatas
                 out[i].attachmentPath = locals[j].attachmentPath
                 out[i].attachmentName = locals[j].attachmentName
                 locals.remove(at: j)
             } else if out[i].text.isEmpty, !locals.isEmpty {
                 let saved = locals.removeFirst()
                 out[i].imageData = saved.imageData
+                out[i].imageDatas = saved.imageDatas
                 out[i].attachmentPath = saved.attachmentPath
                 out[i].attachmentName = saved.attachmentName
             }
@@ -504,8 +507,10 @@ final class AppModel: ObservableObject {
             }
             return
         }
-        if let img = attachments.first(where: { $0.isImage })?.data {
-            userMessage.imageData = img
+        let imgs = attachments.filter { $0.isImage }.map(\.data)
+        if !imgs.isEmpty {
+            userMessage.imageDatas = imgs
+            userMessage.imageData = imgs.first
         }
         if let file = attachments.first(where: { !$0.isImage }) {
             if let path = Self.storeAttachment(file) {

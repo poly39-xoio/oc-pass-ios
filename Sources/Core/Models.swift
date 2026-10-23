@@ -23,6 +23,8 @@ struct ChatMessage: Identifiable, Codable, Equatable {
     var pending = false
     /// 使用者自己送出的圖片(本機顯示用)
     var imageData: Data? = nil
+    /// 一次送多張圖時的本機副本
+    var imageDatas: [Data]? = nil
     /// 使用者送出的檔案(本機路徑 + 顯示名稱)
     var attachmentName: String? = nil
     var attachmentPath: String? = nil
