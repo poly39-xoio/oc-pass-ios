@@ -396,7 +396,7 @@ struct MessageBubble: View {
                             }
                             Button {
                                 shareItems = [ui]
-                                showShare = true
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { showShare = true }
                             } label: {
                                 Label(L("分享"), systemImage: "square.and.arrow.up")
                             }
@@ -417,7 +417,7 @@ struct MessageBubble: View {
                             }
                             Button {
                                 shareItems = [visibleText]
-                                showShare = true
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { showShare = true }
                             } label: {
                                 Label(L("分享文字"), systemImage: "square.and.arrow.up")
                             }
@@ -465,7 +465,7 @@ struct MessageBubble: View {
             Button {
                 if let tmp = MessageBubble.copyToTemp(path: path, name: name) {
                     shareItems = [tmp]
-                    showShare = true
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { showShare = true }
                 }
             } label: {
                 Label(L("分享"), systemImage: "square.and.arrow.up")
