@@ -1,42 +1,46 @@
 import SwiftUI
 
-/// 統一的 sheet 頂部列:標題置中、左右各一顆「方形單層」按鈕(不用系統 toolbar,避免變成圓形玻璃底)
-struct SheetHeader<Leading: View>: View {
+/// 統一的 sheet 頂部列:左邊「返回箭頭」、中間標題、右邊可放配件(例如語言鍵)。
+/// 自己畫,不用系統 toolbar,避免 iOS 26 自動加圓形玻璃底。
+struct SheetHeader<Trailing: View>: View {
     let title: String
-    let leading: Leading
     let onDone: () -> Void
+    let trailing: Trailing
 
-    init(title: String, onDone: @escaping () -> Void, @ViewBuilder leading: () -> Leading) {
+    init(title: String, onDone: @escaping () -> Void, @ViewBuilder trailing: () -> Trailing) {
         self.title = title
         self.onDone = onDone
-        self.leading = leading()
+        self.trailing = trailing()
     }
 
     var body: some View {
         HStack(spacing: 8) {
-            leading
-            Spacer()
-            Text(title)
-                .font(Theme.ui(16, .semibold))
-                .foregroundStyle(.white)
-                .lineLimit(1)
-            Spacer()
             Button(action: onDone) {
-                Image(systemName: "checkmark")
-                    .font(.system(size: 14, weight: .bold))
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 15, weight: .bold))
                     .foregroundStyle(Theme.accent)
                     .frame(width: 32, height: 30)
                     .background(Theme.panel2)
                     .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(L("完成"))
+
+            Spacer()
+            Text(title)
+                .font(Theme.ui(16, .semibold))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+            Spacer()
+
+            trailing.frame(minWidth: 32, minHeight: 30)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
     }
 }
 
-extension SheetHeader where Leading == EmptyView {
+extension SheetHeader where Trailing == EmptyView {
     init(title: String, onDone: @escaping () -> Void) {
         self.init(title: title, onDone: onDone) { EmptyView() }
     }
