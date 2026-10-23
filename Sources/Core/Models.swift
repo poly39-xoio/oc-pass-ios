@@ -28,6 +28,8 @@ struct ChatMessage: Identifiable, Codable, Equatable {
     var attachmentPath: String? = nil
     /// 工具/中間產物列:不顯示,但用來切斷「同一輪」的助理訊息
     var hidden: Bool? = nil
+    /// 歷史訊息有沒有帶時間(沒有就不顯示假時間)
+    var hasTimestamp: Bool? = nil
 
     var isHidden: Bool { hidden == true }
 }
