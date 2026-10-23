@@ -362,22 +362,27 @@ final class AppModel: ObservableObject {
         saveTranscript()
     }
 
-    /// 歷史刷新後,把本機記住的圖片/檔案接回對應訊息(用文字比對)
+    /// 歷史刷新後,把本機記住的圖片/檔案接回對應訊息。
+    /// 先比文字;文字對不上(gateway 歷史裡附件訊息是空字串)時,依使用者訊息順序配回去。
     private func mergeLocalAttachments(_ list: [ChatMessage]) -> [ChatMessage] {
-        var local: [String: ChatMessage] = [:]
-        for m in messages where m.imageData != nil || m.attachmentPath != nil {
-            local[m.text] = m
-        }
-        guard !local.isEmpty else { return list }
-        return list.map { item in
-            var copy = item
-            if let saved = local[item.text] {
-                copy.imageData = saved.imageData
-                copy.attachmentPath = saved.attachmentPath
-                copy.attachmentName = saved.attachmentName
+        var locals = messages.filter { ($0.imageData != nil || $0.attachmentPath != nil) && $0.role == .user }
+        guard !locals.isEmpty else { return list }
+        var out = list
+        for i in out.indices where out[i].role == .user {
+            if let j = locals.firstIndex(where: { !$0.text.isEmpty && $0.text == out[i].text }) {
+                out[i].imageData = locals[j].imageData
+                out[i].attachmentPath = locals[j].attachmentPath
+                out[i].attachmentName = locals[j].attachmentName
+                locals.remove(at: j)
+            } else if out[i].text.isEmpty, !locals.isEmpty {
+                let saved = locals.removeFirst()
+                out[i].imageData = saved.imageData
+                out[i].attachmentPath = saved.attachmentPath
+                out[i].attachmentName = saved.attachmentName
             }
-            return copy
         }
+        // 配不到附件的空白使用者訊息就不要顯示(避免空氣泡)
+        return out.filter { !($0.role == .user && $0.text.isEmpty && $0.imageData == nil && $0.attachmentPath == nil) }
     }
 
     private func collapsed(_ list: [ChatMessage]) -> [ChatMessage] {
@@ -574,7 +579,7 @@ final class AppModel: ObservableObject {
             try? await Task.sleep(nanoseconds: 500_000_000)
         }
         if let h = try? await client.history(sessionKey: sessionKey), !h.isEmpty {
-            messages = collapsed(h)
+            messages = mergeLocalAttachments(collapsed(h))
             saveTranscript()
         }
         streaming = false
@@ -608,7 +613,7 @@ final class AppModel: ObservableObject {
                 if let key = currentSession?.id {
                     Task {
                         if let h = try? await client.history(sessionKey: key), !h.isEmpty {
-                            messages = collapsed(h)
+                            messages = mergeLocalAttachments(collapsed(h))
                             saveTranscript()
                         }
                     }
