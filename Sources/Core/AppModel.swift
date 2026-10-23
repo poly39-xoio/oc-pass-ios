@@ -655,6 +655,11 @@ final class AppModel: ObservableObject {
 
     func loadDashboard() async {
         guard isConnected else { return }
+        if isDemo {                       // Demo 沒有真實 gateway,不要顯示「讀取會話失敗」
+            dashboardLoading = false
+            dashboardError = nil
+            return
+        }
         dashboardLoading = true
         dashboardError = nil
         async let ping = client.pingLatency()
@@ -668,7 +673,7 @@ final class AppModel: ObservableObject {
         cronJobs = (try? await jobs) ?? []
         nodes = (try? await nodeList) ?? []
 
-        if let s = try? await sessionList { sessions = s } else { dashboardError = "讀取會話失敗" }
+        if let s = try? await sessionList { sessions = s } else { dashboardError = L("讀取會話失敗") }
         if let p = try? await pairs { pendingApprovals = p.pending; pairedDevices = p.approved }
         if let m = try? await modelList, !m.isEmpty, availableModels.isEmpty { availableModels = m }
 
@@ -862,7 +867,7 @@ final class AppModel: ObservableObject {
                 await loadDashboard()
             } catch {
                 let msg = error.localizedDescription
-                actionError = "切換模型失敗:" + msg
+                actionError = L("切換模型失敗:") + msg
                 // 這個模型不被允許 → 從清單移除,避免再選到
                 if msg.lowercased().contains("not allowed") {
                     availableModels.removeAll { $0 == model || model.hasSuffix($0) || $0.hasSuffix(model) }

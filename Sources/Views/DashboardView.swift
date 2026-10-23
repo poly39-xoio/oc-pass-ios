@@ -109,7 +109,7 @@ struct DashboardView: View {
 
     private var currentModelLabel: String {
         if let m = model.currentSession?.model, !m.isEmpty { return m }
-        return "切換"
+        return L("切換")
     }
 
     // MARK: - 待核准

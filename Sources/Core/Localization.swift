@@ -126,6 +126,8 @@ private let EN: [String: String] = [
     "自己填位址與 token（進階）": "Enter URL and token yourself (advanced)",
     "不用連線，先看看介面": "No connection needed — take a look",
     "退出": "Exit",
+    "讀取會話失敗": "Couldn't load chats",
+    "切換模型失敗:": "Failed to switch model: ",
     // Demo(模式內文字也要跟著語系)
     "這是 Demo 模式：不需要連接 gateway 也能操作。\n\n連上你自己的 OpenClaw 後，這裡會顯示真實對話。":
         "Demo mode: explore without connecting a gateway.\n\nOnce you connect your own OpenClaw, real conversations appear here.",
