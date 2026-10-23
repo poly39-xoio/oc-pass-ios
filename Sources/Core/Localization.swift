@@ -65,7 +65,55 @@ private let EN: [String: String] = [
     "檔案上限:圖片 6 MB、其他檔案 18 MB。":
         "Attachment limits: images 6 MB, other files 18 MB.",
     "隨時可在設定頁「移除這台裝置」斷開配對。":
-        "You can always unpair from Settings → Remove this device."
+        "You can always unpair from Settings → Remove this device.",
+    // Relay / 訂閱(2026-10-23)
+    "一鍵連線": "One-tap connect",
+    "免費方案：100MB/月 · 需要更多可訂閱 $2.99/月 或 $24.99/年（前 3 天免費）":
+        "Free plan: 100 MB/month. Need more? $2.99/month or $24.99/year (3-day free trial).",
+    "正在建立連線通道…": "Creating your relay channel…",
+    "重新試一次": "Try again",
+    "在跑 OpenClaw 的電腦上，貼上這行並按 Enter":
+        "Paste this line on the computer running OpenClaw, then press Enter.",
+    "已複製 ✓": "Copied ✓",
+    "複製指令": "Copy command",
+    "不用做其他事 — 電腦裝好後，這支 App 會自動接上":
+        "Nothing else to do — this app connects automatically once your computer is set up.",
+    "等待電腦端連上…": "Waiting for your computer…",
+    "免費到": "Free until",
+    "按下面按鈕，30 秒內就能連上你的 OpenClaw":
+        "Tap below to connect to your OpenClaw in about 30 seconds.",
+    "免費連線": "Connect for free",
+    "不需要註冊帳號，也不必自己有網域或公網 IP。":
+        "No account, no domain, no public IP required.",
+    "不用網域、不用開 port，出門也能連。免費 100MB/月；訂閱 $2.99/月 或 $24.99/年（前 3 天免費，1GB/月）。":
+        "No domain or port forwarding needed. Free 100 MB/month; subscription $2.99/month or $24.99/year (3-day free trial, 1 GB/month).",
+    "免費連線（100MB/月）": "Connect free (100 MB/mo)",
+    "訂閱 / 還原購買": "Subscribe / Restore",
+    "訂閱 Relay": "Relay subscription",
+    "前 3 天免費，之後自動續訂（1GB/月）。可隨時在 Apple ID 設定取消。":
+        "3 days free, then auto-renews (1 GB/month). Cancel anytime in Apple ID settings.",
+    "已訂閱，Relay 已解鎖": "Subscribed — relay unlocked",
+    "讀取商品中…": "Loading products…",
+    "重新整理": "Refresh",
+    "免費層 100MB/月；訂閱後 1GB/月。":
+        "Free tier 100 MB/month; 1 GB/month with a subscription.",
+    "還原購買": "Restore purchases",
+    "訂閱會自動續訂，除非在到期前 24 小時取消。管理或取消：設定 › Apple ID › 訂閱。":
+        "Subscriptions renew automatically unless cancelled 24 hours before renewal. Manage: Settings › Apple ID › Subscriptions.",
+    "年繳": "Yearly",
+    "月繳": "Monthly",
+    "平均 $2.08/月，省 30%": "≈$2.08/month — save 30%",
+    "每月自動續訂": "Auto-renews monthly",
+    "前 %d 天免費": "Free for %d days",
+    "找不到訂閱商品(可能還在 App Store Connect 審核設定中)":
+        "Products unavailable (they may still be in App Store Connect review setup).",
+    // 對話選單
+    "複製": "Copy",
+    "分享文字": "Share text",
+    "刪除訊息": "Delete message",
+    "刪除照片": "Delete photo",
+    "刪除檔案": "Delete file",
+    "清除本機紀錄": "Clear local history"
 ]
 
 func L(_ key: String) -> String {
