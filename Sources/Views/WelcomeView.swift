@@ -91,6 +91,21 @@ struct WelcomeView: View {
             }
             .padding(.horizontal, 30)
         }
+        .overlay(alignment: .topTrailing) {
+            Button {
+                model.setLanguage(Language.isEnglish ? "zh" : "en")
+            } label: {
+                Text(Language.isEnglish ? "中文" : "EN")
+                    .font(Theme.ui(12, .bold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
+                    .background(Theme.panel)
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            }
+            .padding(.top, 52)
+            .padding(.trailing, 16)
+        }
     }
 
     @ViewBuilder

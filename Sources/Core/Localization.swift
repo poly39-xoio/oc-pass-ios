@@ -125,6 +125,7 @@ private let EN: [String: String] = [
     "用電腦執行 openclaw qr，掃它產生的 QR": "Run openclaw qr on your computer and scan its QR",
     "自己填位址與 token（進階）": "Enter URL and token yourself (advanced)",
     "不用連線，先看看介面": "No connection needed — take a look",
+    "退出": "Exit",
     "取不回原本的連線，請稍後再試": "Couldn't restore your previous connection — please try again.",
     "裝置簽章失敗": "Device signing failed.",
     "Relay 回應格式錯誤": "Unexpected response from relay.",

@@ -121,7 +121,17 @@ struct ChatView: View {
                     .padding(.horizontal, 9).padding(.vertical, 4)
                     .background(Theme.panel)
                     .foregroundStyle(Theme.accent)
-                    .clipShape(Capsule())
+                    .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+                Button {
+                    model.exitDemo()
+                } label: {
+                    Text(L("退出"))
+                        .font(Theme.ui(12, .semibold))
+                        .foregroundStyle(Theme.ink)
+                        .frame(width: 56, height: 30)
+                        .background(Theme.panel2)
+                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                }
             }
         }
         .padding(.horizontal, 16)
