@@ -66,13 +66,16 @@ final class GatewayClient {
     private var challengeWaiter: CheckedContinuation<String, Error>?
     private var eventHandler: ((String, Any?) -> Void)?
     private(set) var isOpen = false
+    /// 保護 pending / challengeWaiter / isOpen(多個 async 呼叫會同時進來)
+    private let stateLock = NSLock()
     var onDisconnect: (() -> Void)?
 
     func onEvent(_ h: @escaping (String, Any?) -> Void) { eventHandler = h }
 
     func connect(url: URL, auth: AuthMode) async throws -> HelloAuth {
         let t = URLSession(configuration: .default).webSocketTask(with: url)
-        task = t; t.resume(); isOpen = true
+        task = t; t.resume()
+        stateLock.lock(); isOpen = true; stateLock.unlock()
         receiveLoop()
 
         let nonce = try await waitForChallenge()
@@ -127,9 +130,13 @@ final class GatewayClient {
 
     func disconnect() {
         task?.cancel(with: .goingAway, reason: nil)
-        task = nil; isOpen = false
-        pending.values.forEach { $0.resume(throwing: ClientError.notConnected) }
+        task = nil
+        stateLock.lock()
+        isOpen = false
+        let waiting = pending.values
         pending.removeAll()
+        stateLock.unlock()
+        waiting.forEach { $0.resume(throwing: ClientError.notConnected) }
     }
 
     func request(_ method: String, _ params: [String: Any] = [:]) async throws -> Any? {
@@ -137,7 +144,9 @@ final class GatewayClient {
         let id = UUID().uuidString
         let data = try JSONSerialization.data(withJSONObject: ["type": "req", "id": id, "method": method, "params": params])
         return try await withCheckedThrowingContinuation { cont in
+            stateLock.lock()
             pending[id] = cont
+            stateLock.unlock()
             task.send(.data(data)) { err in
                 if let err { self.finish(id, .failure(err)) }
             }
@@ -358,7 +367,10 @@ final class GatewayClient {
     // MARK: - internals
 
     private func finish(_ id: String, _ result: Result<Any?, Error>) {
-        guard let c = pending.removeValue(forKey: id) else { return }
+        stateLock.lock()
+        let c = pending.removeValue(forKey: id)
+        stateLock.unlock()
+        guard let c else { return }
         switch result {
         case .success(let v): c.resume(returning: v)
         case .failure(let e): c.resume(throwing: e)
@@ -367,10 +379,14 @@ final class GatewayClient {
 
     private func waitForChallenge() async throws -> String {
         try await withCheckedThrowingContinuation { cont in
-            challengeWaiter = cont
+            stateLock.lock(); challengeWaiter = cont; stateLock.unlock()
             DispatchQueue.main.asyncAfter(deadline: .now() + 10) { [weak self] in
-                guard let self, let c = self.challengeWaiter else { return }
+                guard let self else { return }
+                self.stateLock.lock()
+                let c = self.challengeWaiter
                 self.challengeWaiter = nil
+                self.stateLock.unlock()
+                guard let c else { return }
                 c.resume(throwing: ClientError.challengeTimeout)
             }
         }
@@ -381,10 +397,13 @@ final class GatewayClient {
             guard let self else { return }
             switch result {
             case .failure(let err):
+                self.stateLock.lock()
                 let wasOpen = self.isOpen
                 self.isOpen = false
-                self.pending.values.forEach { $0.resume(throwing: err) }
+                let waiting = self.pending.values
                 self.pending.removeAll()
+                self.stateLock.unlock()
+                waiting.forEach { $0.resume(throwing: err) }
                 if wasOpen { self.onDisconnect?() }
             case .success(let message):
                 self.handle(message)
@@ -408,10 +427,12 @@ final class GatewayClient {
             let name = obj["event"] as? String ?? ""
             if name == "connect.challenge",
                let payload = obj["payload"] as? [String: Any],
-               let nonce = payload["nonce"] as? String,
-               let waiter = challengeWaiter {
+               let nonce = payload["nonce"] as? String {
+                stateLock.lock()
+                let waiter = challengeWaiter
                 challengeWaiter = nil
-                waiter.resume(returning: nonce)
+                stateLock.unlock()
+                if let waiter { waiter.resume(returning: nonce) }
             } else {
                 eventHandler?(name, obj["payload"])
             }
