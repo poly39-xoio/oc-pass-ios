@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import QuickLook
 import PhotosUI
 import UniformTypeIdentifiers
 
@@ -360,6 +361,7 @@ struct TypingBubble: View {
 
 struct MessageBubble: View {
     let message: ChatMessage
+    @State private var previewURL: URL?
 
     var body: some View {
         HStack {
@@ -384,6 +386,9 @@ struct MessageBubble: View {
                             }
                         }
                 }
+                if let path = message.attachmentPath, FileManager.default.fileExists(atPath: path) {
+                    fileCard(path: path, name: message.attachmentName ?? URL(fileURLWithPath: path).lastPathComponent)
+                }
                 if !visibleText.isEmpty {
                     Text(visibleText)
                         .font(Theme.ui(15))
@@ -397,6 +402,37 @@ struct MessageBubble: View {
             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             if message.role != .user { Spacer(minLength: 40) }
         }
+    }
+
+    @ViewBuilder
+    private func fileCard(path: String, name: String) -> some View {
+        let url = URL(fileURLWithPath: path)
+        HStack(spacing: 8) {
+            Image(systemName: "doc.fill")
+                .font(.system(size: 16, weight: .semibold))
+            VStack(alignment: .leading, spacing: 1) {
+                Text(name).font(Theme.ui(13, .semibold)).lineLimit(1)
+                Text(fileSize(path)).font(Theme.ui(10)).opacity(0.75)
+            }
+        }
+        .padding(.horizontal, 10).padding(.vertical, 8)
+        .background(Theme.panel2.opacity(0.9))
+        .foregroundStyle(Theme.ink)
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .onTapGesture { previewURL = url }
+        .contextMenu {
+            ShareLink(item: url) { Label(L("分享"), systemImage: "square.and.arrow.up") }
+            Button { previewURL = url } label: { Label(L("快速查看"), systemImage: "eye") }
+        }
+        .quickLookPreview($previewURL)
+    }
+
+    private func fileSize(_ path: String) -> String {
+        let attrs = try? FileManager.default.attributesOfItem(atPath: path)
+        let bytes = (attrs?[.size] as? NSNumber)?.intValue ?? 0
+        if bytes >= 1024 * 1024 { return String(format: "%.1f MB", Double(bytes) / 1_048_576) }
+        if bytes >= 1024 { return String(format: "%.0f KB", Double(bytes) / 1024) }
+        return "\(bytes) B"
     }
 
     static func tempImageURL(_ data: Data) -> URL? {

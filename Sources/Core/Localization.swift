@@ -47,7 +47,7 @@ private let EN: [String: String] = [
     "收鍵盤": "Hide keyboard",
     // 附加檔案
     "附加檔案": "Attach file", "照片": "Photo", "檔案": "File",
-    "複製圖片": "Copy image", "分享": "Share",
+    "複製圖片": "Copy image", "快速查看": "Quick Look", "分享": "Share",
     "太大": "Too large", "這個檔案超過 18 MB,請壓縮後再傳": "This file exceeds 18 MB — please compress it first.",
     "無法讀取這個檔案": "Could not read this file",
     // 說明

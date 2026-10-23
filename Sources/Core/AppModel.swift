@@ -283,6 +283,16 @@ final class AppModel: ObservableObject {
         return out
     }
 
+    /// 把使用者送的檔案存到 App 本機(供氣泡顯示 / 分享)
+    static func storeAttachment(_ att: PendingAttachment) -> String? {
+        guard let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else { return nil }
+        let dir = base.appendingPathComponent("Attachments", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let safeName = att.name.replacingOccurrences(of: "/", with: "_")
+        let url = dir.appendingPathComponent(UUID().uuidString.prefix(8) + "-" + safeName)
+        do { try att.data.write(to: url); return url.path } catch { return nil }
+    }
+
     private func saveTranscript() {
         guard let key = currentSession?.id, !key.isEmpty else { return }
         TranscriptCache.save(messages, for: key)
@@ -351,6 +361,12 @@ final class AppModel: ObservableObject {
         var userMessage = ChatMessage(role: .user, text: shown)
         if let img = attachments.first(where: { $0.isImage })?.data {
             userMessage.imageData = img
+        }
+        if let file = attachments.first(where: { !$0.isImage }) {
+            if let path = Self.storeAttachment(file) {
+                userMessage.attachmentName = file.name
+                userMessage.attachmentPath = path
+            }
         }
         messages.append(userMessage)
         saveTranscript()
