@@ -21,6 +21,8 @@ struct ChatMessage: Identifiable, Codable, Equatable {
     var text: String
     var createdAt = Date()
     var pending = false
+    /// 使用者自己送出的圖片(本機顯示用)
+    var imageData: Data? = nil
     /// 工具/中間產物列:不顯示,但用來切斷「同一輪」的助理訊息
     var hidden: Bool? = nil
 

@@ -342,7 +342,10 @@ final class AppModel: ObservableObject {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !(trimmed.isEmpty && attachments.isEmpty), let session = currentSession else { return }
         let shown = trimmed.isEmpty ? (attachments.count == 1 ? "[附件] \(attachments[0].name)" : "[附件] \(attachments.count) 個檔案") : trimmed
-        let userMessage = ChatMessage(role: .user, text: shown)
+        var userMessage = ChatMessage(role: .user, text: shown)
+        if let img = attachments.first(where: { $0.isImage })?.data {
+            userMessage.imageData = img
+        }
         messages.append(userMessage)
         saveTranscript()
         streaming = true

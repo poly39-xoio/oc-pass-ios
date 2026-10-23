@@ -363,16 +363,34 @@ struct MessageBubble: View {
     var body: some View {
         HStack {
             if message.role == .user { Spacer(minLength: 40) }
-            Text(message.text)
-                .font(Theme.ui(15))
-                .padding(.horizontal, 12)
-                .padding(.vertical, 9)
-                .background(bubbleColor)
-                .foregroundStyle(textColor)
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                .textSelection(.enabled)
+            VStack(alignment: .leading, spacing: 6) {
+                if let data = message.imageData, let ui = UIImage(data: data) {
+                    Image(uiImage: ui)
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxWidth: 220, maxHeight: 260)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
+                if !visibleText.isEmpty {
+                    Text(visibleText)
+                        .font(Theme.ui(15))
+                        .textSelection(.enabled)
+                }
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 9)
+            .background(bubbleColor)
+            .foregroundStyle(textColor)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             if message.role != .user { Spacer(minLength: 40) }
         }
+    }
+
+    /// 隱藏 gateway 留下的媒體標記
+    private var visibleText: String {
+        message.text
+            .replacingOccurrences(of: #"\[media attached: [^\]]*\]"#, with: "", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private var bubbleColor: Color {
