@@ -207,6 +207,8 @@ final class GatewayClient {
     /// 判斷是否為 base64/JSON 控制區塊(用於隱藏亂碼)
     static func looksLikeEncodedBlob(_ s: String) -> Bool {
         if s.hasPrefix("{\"sid\":") || s.hasPrefix("{\"relay\":") { return true }
+        if s.hasPrefix("Exec completed (") { return true }
+        if s.hasPrefix("Exec failed (") { return true }
         guard s.count >= 120, !s.contains(" "), !s.contains("\n") else { return false }
         let allowed = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=_-")
         return s.unicodeScalars.allSatisfy { allowed.contains($0) }
