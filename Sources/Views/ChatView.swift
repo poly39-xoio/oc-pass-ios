@@ -27,6 +27,7 @@ struct ChatView: View {
             VStack(spacing: 0) {
                 header
                 if case .connecting = model.state { reconnectingBanner }
+                if let warn = model.versionWarning { versionBanner(warn) }
                 messageList
                 attachmentChips
                 inputBar
@@ -86,6 +87,18 @@ struct ChatView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 5)
+    }
+
+    @ViewBuilder
+    private func versionBanner(_ text: String) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "exclamationmark.triangle.fill").font(.system(size: 12))
+            Text(text).font(Theme.ui(11, .medium)).lineLimit(2)
+        }
+        .foregroundStyle(Theme.ink)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 12).padding(.vertical, 6)
+        .background(Theme.warn.opacity(0.75))
     }
 
     private var reconnectingBanner: some View {

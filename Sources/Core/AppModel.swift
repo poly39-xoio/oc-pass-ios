@@ -34,6 +34,9 @@ final class AppModel: ObservableObject {
     @Published var trialLoading = false
     @Published var sessionError: String?
     @Published var gatewayVersion: String = ""
+    @Published var versionWarning: String?
+    /// 最低支援的 gateway 版本(協議 v4 的穩定起點)
+    static let minGatewayVersion = "2026.6.0"
     /// 使用者自己設定的名字(存在 UserDefaults),用來顯示「你是誰」而不是 Telegram 帳號
     @Published var languageRevision = 0
     @Published var userName: String = UserDefaults.standard.string(forKey: "ocpass.userName") ?? ""
@@ -169,6 +172,21 @@ final class AppModel: ObservableObject {
         return nil
     }
 
+    /// 版本比較(粗略但夠用:2026.10.6)
+    static func isTooOld(_ version: String) -> Bool {
+        func parts(_ s: String) -> [Int] {
+            s.split(separator: "-").first.map(String.init)?.split(separator: ".").compactMap { Int($0) } ?? []
+        }
+        let a = parts(version), b = parts(minGatewayVersion)
+        guard !a.isEmpty, !b.isEmpty else { return false }
+        for i in 0..<max(a.count, b.count) {
+            let x = i < a.count ? a[i] : 0
+            let y = i < b.count ? b[i] : 0
+            if x != y { return x < y }
+        }
+        return false
+    }
+
     /// 從配對碼取出內嵌的 gateway token(沒有就回 nil)
     static func relayEmbeddedToken(_ raw: String) -> TokenString? {
         let s = raw.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -236,7 +254,10 @@ final class AppModel: ObservableObject {
                     CredentialStore.save(url: url, token: dt, kind: "device")
                 }
                 currentGateway = Gateway(name: url.host ?? "gateway", url: url, lastSeen: Date())
-                if let v = hello.serverVersion, !v.isEmpty { gatewayVersion = v }
+                if let v = hello.serverVersion, !v.isEmpty {
+                    gatewayVersion = v
+                    versionWarning = Self.isTooOld(v) ? "Gateway 版本過舊(\(v)),請更新後再使用" : nil
+                }
                 reconnectAttempt = 0
                 state = .ready
                 startHeartbeat()
