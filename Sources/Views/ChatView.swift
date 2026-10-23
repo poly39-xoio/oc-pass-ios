@@ -48,6 +48,14 @@ struct ChatView: View {
         }
     }
 
+    private func scrollToBottom(_ proxy: ScrollViewProxy, delay: Double, anchor: String = "bottom-anchor") {
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+            withAnimation(.easeOut(duration: 0.2)) {
+                proxy.scrollTo(anchor, anchor: .bottom)
+            }
+        }
+    }
+
     /// 離開 App / 切換 session 都還在
     private func restoreDraft() {
         let perSession = UserDefaults.standard.string(forKey: draftKey) ?? ""
@@ -126,6 +134,7 @@ struct ChatView: View {
                         HStack { TypingBubble(); Spacer(minLength: 40) }
                             .id("typing-indicator")
                     }
+                    Color.clear.frame(height: 1).id("bottom-anchor")
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 12)
@@ -135,16 +144,14 @@ struct ChatView: View {
             .scrollDismissesKeyboard(.interactively)
             .contentShape(Rectangle())
             .onTapGesture { inputFocused = false }   // 點空白處收起鍵盤(像 Telegram)
-            .onAppear {
-                if let last = model.messages.last { proxy.scrollTo(last.id, anchor: .bottom) }
+            .onAppear { scrollToBottom(proxy, delay: 0.35) }
+            .onChange(of: model.state) { _, newState in
+                if case .ready = newState { scrollToBottom(proxy, delay: 0.45) }
             }
-            .onChange(of: model.messages.count) { _, _ in
-                if let last = model.messages.last {
-                    withAnimation { proxy.scrollTo(last.id, anchor: .bottom) }
-                }
-            }
+            .onChange(of: model.messages.count) { _, _ in scrollToBottom(proxy, delay: 0.05) }
+            .onChange(of: model.messages.last?.id) { _, _ in scrollToBottom(proxy, delay: 0.05) }
             .onChange(of: model.awaitingReply) { _, typing in
-                if typing { withAnimation { proxy.scrollTo("typing-indicator", anchor: .bottom) } }
+                if typing { scrollToBottom(proxy, delay: 0.05, anchor: "typing-indicator") }
             }
         }
     }
