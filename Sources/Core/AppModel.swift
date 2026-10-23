@@ -364,6 +364,7 @@ final class AppModel: ObservableObject {
             messages[i].attachmentName = nil
             messages[i].imageData = nil
             messages[i].imageDatas = nil
+            messages[i].imagePaths = nil
         }
         saveTranscript()
     }
@@ -371,13 +372,14 @@ final class AppModel: ObservableObject {
     /// 歷史刷新後,把本機記住的圖片/檔案接回對應訊息。
     /// 先比文字;文字對不上(gateway 歷史裡附件訊息是空字串)時,依使用者訊息順序配回去。
     private func mergeLocalAttachments(_ list: [ChatMessage]) -> [ChatMessage] {
-        var locals = messages.filter { ($0.imageData != nil || $0.imageDatas != nil || $0.attachmentPath != nil) && $0.role == .user }
+        var locals = messages.filter { ($0.imageData != nil || $0.imageDatas != nil || $0.imagePaths != nil || $0.attachmentPath != nil) && $0.role == .user }
         guard !locals.isEmpty else { return list }
         var out = list
         for i in out.indices where out[i].role == .user {
             if let j = locals.firstIndex(where: { !$0.text.isEmpty && $0.text == out[i].text }) {
                 out[i].imageData = locals[j].imageData
                 out[i].imageDatas = locals[j].imageDatas
+                out[i].imagePaths = locals[j].imagePaths
                 out[i].attachmentPath = locals[j].attachmentPath
                 out[i].attachmentName = locals[j].attachmentName
                 locals.remove(at: j)
@@ -385,6 +387,7 @@ final class AppModel: ObservableObject {
                 let saved = locals.removeFirst()
                 out[i].imageData = saved.imageData
                 out[i].imageDatas = saved.imageDatas
+                out[i].imagePaths = saved.imagePaths
                 out[i].attachmentPath = saved.attachmentPath
                 out[i].attachmentName = saved.attachmentName
             }
@@ -431,7 +434,16 @@ final class AppModel: ObservableObject {
 
     private func saveTranscript() {
         guard let key = currentSession?.id, !key.isEmpty else { return }
-        TranscriptCache.save(messages, for: key)
+        // 圖片本體不寫進 transcript(會讓 JSON 爆大 → 閃退);只留磁碟路徑
+        let slim = messages.map { m -> ChatMessage in
+            var c = m
+            if c.imageData != nil || c.imageDatas != nil {
+                c.imageData = nil
+                c.imageDatas = nil
+            }
+            return c
+        }
+        TranscriptCache.save(slim, for: key)
     }
 
     // MARK: - Sessions
@@ -507,10 +519,11 @@ final class AppModel: ObservableObject {
             }
             return
         }
-        let imgs = attachments.filter { $0.isImage }.map(\.data)
-        if !imgs.isEmpty {
-            userMessage.imageDatas = imgs
-            userMessage.imageData = imgs.first
+        let imgAtts = attachments.filter { $0.isImage }
+        if !imgAtts.isEmpty {
+            userMessage.imageDatas = imgAtts.map(\.data)
+            userMessage.imageData = imgAtts.first?.data
+            userMessage.imagePaths = imgAtts.compactMap { Self.storeAttachment($0) }
         }
         if let file = attachments.first(where: { !$0.isImage }) {
             if let path = Self.storeAttachment(file) {

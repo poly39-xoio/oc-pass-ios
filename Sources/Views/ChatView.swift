@@ -297,15 +297,25 @@ struct ChatView: View {
             guard !items.isEmpty else { return }
             Task {
                 var added: [PendingAttachment] = []
+                let multi = items.count > 1
+                let maxB = multi ? 1_200_000 : 6_000_000
+                let maxD: CGFloat = multi ? 1600 : 2048
                 for item in items {
                     if let data = try? await item.loadTransferable(type: Data.self) {
-                        let att = await Task.detached { Self.makeImageAttachment(data) }.value
+                        let att = await Task.detached { Self.makeImageAttachment(data, maxBytes: maxB, maxDim: maxD) }.value
                         if let att { added.append(att) } else { await MainActor.run { sizeWarning = L("無法讀取這個檔案") } }
                     }
                 }
                 await MainActor.run {
                     pending.append(contentsOf: added)
                     photoItems = []
+                    let total = pending.reduce(0) { $0 + $1.data.count }
+                    if total > 24 * 1024 * 1024 {
+                        sizeWarning = L("附件總量超過 24 MB，請減少張數")
+                        while pending.reduce(0, { $0 + $1.data.count }) > 24 * 1024 * 1024, !pending.isEmpty {
+                            pending.removeLast()
+                        }
+                    }
                 }
             }
         }
@@ -347,9 +357,19 @@ struct ChatView: View {
     }
 
     /// 圖片 > 6 MB 自動壓縮(縮尺寸 + 降品質)
-    static func makeImageAttachment(_ data: Data) -> PendingAttachment? {
-        guard let img = UIImage(data: data) else { return nil }
-        let limit = 6 * 1024 * 1024
+    static func makeImageAttachment(_ data: Data, maxBytes: Int = 6 * 1024 * 1024, maxDim: CGFloat = 2048) -> PendingAttachment? {
+        guard var img = UIImage(data: data) else { return nil }
+        // 先縮到最大邊長,再壓品質
+        let longest = max(img.size.width, img.size.height)
+        if longest > maxDim {
+            let sc = maxDim / longest
+            let size = CGSize(width: img.size.width * sc, height: img.size.height * sc)
+            UIGraphicsBeginImageContextWithOptions(size, false, 1)
+            img.draw(in: CGRect(origin: .zero, size: size))
+            if let small = UIGraphicsGetImageFromCurrentImageContext() { img = small }
+            UIGraphicsEndImageContext()
+        }
+        let limit = maxBytes
         var out = img.jpegData(compressionQuality: 0.9) ?? data
         var quality: CGFloat = 0.9
         while out.count > limit && quality > 0.35 {
@@ -437,25 +457,37 @@ struct MessageBubble: View {
     var onDelete: () -> Void = {}
     var onDeleteAttachment: () -> Void = {}
     @State private var previewURL: URL?
+    @State private var zoomImage: UIImage?
+
+    private var mediaOnly: Bool {
+        let has = message.imageData != nil || (message.imageDatas?.isEmpty == false) || (message.imagePaths?.isEmpty == false)
+        return has && visibleText.isEmpty && message.attachmentPath == nil
+    }
+
+    static func images(for m: ChatMessage) -> [UIImage] {
+        if let ds = m.imageDatas, !ds.isEmpty { return ds.compactMap { UIImage(data: $0) } }
+        if let d = m.imageData, let ui = UIImage(data: d) { return [ui] }
+        if let ps = m.imagePaths { return ps.compactMap { UIImage(contentsOfFile: $0) } }
+        return []
+    }
 
     var body: some View {
         HStack {
             if message.role == .user { Spacer(minLength: 40) }
             VStack(alignment: .leading, spacing: 6) {
-                let imgs: [Data] = message.imageDatas ?? (message.imageData.map { [$0] } ?? [])
+                let imgs: [UIImage] = Self.images(for: message)
                 ForEach(imgs.indices, id: \.self) { idx in
-                    if let ui = UIImage(data: imgs[idx]) {
-                        Image(uiImage: ui)
-                            .resizable()
-                            .scaledToFit()
-                            .frame(maxWidth: 220, maxHeight: 260)
-                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-                            .contextMenu {
-                                Button { UIPasteboard.general.image = ui } label: { Label(L("複製圖片"), systemImage: "doc.on.doc") }
-                                Button { onShare([ui]) } label: { Label(L("分享"), systemImage: "square.and.arrow.up") }
-                                Button(role: .destructive) { onDelete() } label: { Label(L("刪除照片"), systemImage: "trash") }
-                            }
-                    }
+                    Image(uiImage: imgs[idx])
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxWidth: mediaOnly ? 300 : 220, maxHeight: mediaOnly ? 400 : 260)
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .onTapGesture { zoomImage = imgs[idx] }
+                        .contextMenu {
+                            Button { UIPasteboard.general.image = imgs[idx] } label: { Label(L("複製圖片"), systemImage: "doc.on.doc") }
+                            Button { onShare([imgs[idx]]) } label: { Label(L("分享"), systemImage: "square.and.arrow.up") }
+                            Button(role: .destructive) { onDelete() } label: { Label(L("刪除照片"), systemImage: "trash") }
+                        }
                 }
                 if let path = message.attachmentPath, FileManager.default.fileExists(atPath: path) {
                     fileCard(path: path, name: message.attachmentName ?? URL(fileURLWithPath: path).lastPathComponent)
@@ -489,11 +521,14 @@ struct MessageBubble: View {
                     }
                 }
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 9)
-            .background(bubbleColor)
+            .padding(.horizontal, mediaOnly ? 0 : 12)
+            .padding(.vertical, mediaOnly ? 0 : 9)
+            .background(mediaOnly ? Color.clear : bubbleColor)
             .foregroundStyle(textColor)
             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .fullScreenCover(isPresented: Binding(get: { zoomImage != nil }, set: { if !$0 { zoomImage = nil } })) {
+                if let img = zoomImage { ZoomViewer(image: img) }
+            }
             if message.role != .user { Spacer(minLength: 40) }
         }
 
@@ -587,6 +622,60 @@ struct MessageBubble: View {
         case .user: return .white
         case .assistant: return Theme.ink
         case .system: return Theme.warn
+        }
+    }
+}
+
+
+/// 全螢幕看圖:雙指縮放 / 拖曳 / 雙擊放大
+struct ZoomViewer: View {
+    let image: UIImage
+    @Environment(\.dismiss) private var dismiss
+    @State private var scale: CGFloat = 1
+    @State private var lastScale: CGFloat = 1
+    @State private var offset: CGSize = .zero
+    @State private var lastOffset: CGSize = .zero
+
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            Color.black.ignoresSafeArea()
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFit()
+                .scaleEffect(scale)
+                .offset(offset)
+                .gesture(
+                    SimultaneousGesture(
+                        MagnificationGesture()
+                            .onChanged { v in scale = min(max(lastScale * v, 1), 5) }
+                            .onEnded { _ in lastScale = scale; if scale <= 1 { offset = .zero; lastOffset = .zero } },
+                        DragGesture()
+                            .onChanged { v in
+                                guard scale > 1 else { return }
+                                offset = CGSize(width: lastOffset.width + v.translation.width,
+                                                height: lastOffset.height + v.translation.height)
+                            }
+                            .onEnded { _ in lastOffset = offset }
+                    )
+                )
+                .onTapGesture(count: 2) {
+                    withAnimation(.easeOut(duration: 0.2)) {
+                        if scale > 1 { scale = 1; lastScale = 1; offset = .zero; lastOffset = .zero }
+                        else { scale = 2.5; lastScale = 2.5 }
+                    }
+                }
+            Button {
+                dismiss()
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 34, height: 34)
+                    .background(.black.opacity(0.55))
+                    .clipShape(Circle())
+            }
+            .padding(.top, 18)
+            .padding(.trailing, 18)
         }
     }
 }

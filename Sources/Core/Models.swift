@@ -25,6 +25,8 @@ struct ChatMessage: Identifiable, Codable, Equatable {
     var imageData: Data? = nil
     /// 一次送多張圖時的本機副本
     var imageDatas: [Data]? = nil
+    /// 圖片的磁碟路徑(存檔用,避免把整張圖塞進 transcript 造成閃退)
+    var imagePaths: [String]? = nil
     /// 使用者送出的檔案(本機路徑 + 顯示名稱)
     var attachmentName: String? = nil
     var attachmentPath: String? = nil
