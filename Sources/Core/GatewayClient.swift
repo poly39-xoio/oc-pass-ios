@@ -199,7 +199,17 @@ final class GatewayClient {
         }
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return nil }
+        // 斷線重連偶爾會把 base64 區塊當訊息存進來:不要顯示
+        guard !Self.looksLikeEncodedBlob(trimmed) else { return nil }
         return ChatMessage(role: role, text: trimmed)
+    }
+
+    /// 判斷是否為 base64/JSON 控制區塊(用於隱藏亂碼)
+    static func looksLikeEncodedBlob(_ s: String) -> Bool {
+        if s.hasPrefix("{\"sid\":") || s.hasPrefix("{\"relay\":") { return true }
+        guard s.count >= 120, !s.contains(" "), !s.contains("\n") else { return false }
+        let allowed = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=_-")
+        return s.unicodeScalars.allSatisfy { allowed.contains($0) }
     }
 
     @discardableResult
