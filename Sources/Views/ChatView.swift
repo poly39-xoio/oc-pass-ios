@@ -177,6 +177,7 @@ struct ChatView: View {
         if !pending.isEmpty {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
+                    Spacer(minLength: 0)
                     ForEach(pending) { a in
                         HStack(spacing: 6) {
                             Image(systemName: a.isImage ? "photo" : "doc")

@@ -362,6 +362,24 @@ final class AppModel: ObservableObject {
         saveTranscript()
     }
 
+    /// 歷史刷新後,把本機記住的圖片/檔案接回對應訊息(用文字比對)
+    private func mergeLocalAttachments(_ list: [ChatMessage]) -> [ChatMessage] {
+        var local: [String: ChatMessage] = [:]
+        for m in messages where m.imageData != nil || m.attachmentPath != nil {
+            local[m.text] = m
+        }
+        guard !local.isEmpty else { return list }
+        return list.map { item in
+            var copy = item
+            if let saved = local[item.text] {
+                copy.imageData = saved.imageData
+                copy.attachmentPath = saved.attachmentPath
+                copy.attachmentName = saved.attachmentName
+            }
+            return copy
+        }
+    }
+
     private func collapsed(_ list: [ChatMessage]) -> [ChatMessage] {
         var out: [ChatMessage] = []
         var buffer: [ChatMessage] = []
@@ -441,7 +459,7 @@ final class AppModel: ObservableObject {
             do {
                 let history = try await client.history(sessionKey: session.id)
                 if !history.isEmpty, history.count >= cached.count {
-                    messages = collapsed(history)
+                    messages = mergeLocalAttachments(collapsed(history))
                     saveTranscript()
                 }
             } catch {
@@ -546,7 +564,7 @@ final class AppModel: ObservableObject {
             if let h = try? await client.history(sessionKey: sessionKey), !h.isEmpty {
                 let c = collapsed(h)
                 if c.last?.role == .assistant {
-                    messages = c
+                    messages = mergeLocalAttachments(c)
                     saveTranscript()
                     streaming = false
                     awaitingReply = false
