@@ -487,6 +487,14 @@ struct MessageBubble: View {
                             }
                         }
                 }
+                if message.hasTimestamp != false, message.role != .system {
+                    HStack {
+                        Spacer(minLength: 0)
+                        Text(Self.timeText(message.createdAt))
+                            .font(.system(size: 10))
+                            .foregroundStyle(textColor.opacity(0.55))
+                    }
+                }
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 9)
@@ -538,6 +546,15 @@ struct MessageBubble: View {
         }
         .quickLookPreview($previewURL)
     }
+
+    private static let timeFmt: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = .current
+        f.dateFormat = DateFormatter.dateFormat(fromTemplate: "j:mm", options: 0, locale: .current) ?? "HH:mm"
+        return f
+    }()
+
+    private static func timeText(_ d: Date) -> String { timeFmt.string(from: d) }
 
     private func fileSize(_ path: String) -> String {
         let attrs = try? FileManager.default.attributesOfItem(atPath: path)

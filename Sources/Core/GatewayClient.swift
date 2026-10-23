@@ -204,7 +204,27 @@ final class GatewayClient {
         }
         // 斷線重連偶爾會把 base64 區塊當訊息存進來:不要顯示
         guard !Self.looksLikeEncodedBlob(trimmed) else { return nil }
-        return ChatMessage(role: role, text: trimmed)
+        let ts = Self.parseTimestamp(m)
+        var msg = ChatMessage(role: role, text: trimmed, createdAt: ts ?? Date())
+        msg.hasTimestamp = (ts != nil)
+        return msg
+    }
+
+    /// gateway 歷史可能有 createdAt/timestamp/ts(ISO 字串或 epoch 秒/毫秒)
+    static func parseTimestamp(_ m: [String: Any]) -> Date? {
+        for key in ["createdAt", "timestamp", "ts", "time", "date"] {
+            if let s = m[key] as? String {
+                if let d = ISO8601DateFormatter().date(from: s) { return d }
+                if let n = Double(s) { return epoch(n) }
+            }
+            if let n = m[key] as? NSNumber { return epoch(n.doubleValue) }
+            if let n = m[key] as? Double { return epoch(n) }
+        }
+        return nil
+    }
+
+    private static func epoch(_ v: Double) -> Date {
+        Date(timeIntervalSince1970: v > 1_000_000_000_000 ? v / 1000 : v)
     }
 
     /// 判斷是否為 base64/JSON 控制區塊(用於隱藏亂碼)
