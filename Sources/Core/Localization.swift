@@ -38,7 +38,7 @@ private let EN: [String: String] = [
     "隱私政策": "Privacy Policy", "版本": "Version",
     "中斷連線（保留配對）": "Disconnect (keep pairing)",
     "移除這台裝置（清除配對）": "Remove this device (clear pairing)",
-    "語言": "Language", "繁體中文": "Traditional Chinese", "English": "English",
+    "語言": "Language", "切換後請重新開啟 App 生效": "Restart the app to apply the new language.", "繁體中文": "Traditional Chinese", "English": "English",
     "使用說明": "How it works", "關於": "About",
     // 控制台
     "Gateway": "Gateway", "延遲": "Latency", "狀態": "Status",

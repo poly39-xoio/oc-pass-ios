@@ -102,6 +102,22 @@ struct SettingsView: View {
                         .background(Theme.panel)
                         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
 
+                        section(L("語言")) {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Picker("", selection: Binding(
+                                    get: { Language.current },
+                                    set: { model.setLanguage($0) }
+                                )) {
+                                    Text("中文").tag("zh")
+                                    Text("English").tag("en")
+                                }
+                                .pickerStyle(.segmented)
+                                Text(L("切換後請重新開啟 App 生效"))
+                                    .font(Theme.ui(11))
+                                    .foregroundStyle(Theme.muted)
+                            }
+                        }
+
                         // 隱私 / 關於 → 最下層
                         section(L("關於")) {
                             VStack(spacing: 10) {
@@ -131,15 +147,7 @@ struct SettingsView: View {
                 .simultaneousGesture(TapGesture().onEnded { hideKeyboard() })
             }
             .safeAreaInset(edge: .top) {
-                SheetHeader(title: L("設定"), onDone: { dismiss() }) {
-                    LanguagePill {
-                        model.setLanguage(Language.isEnglish ? "zh" : "en")
-                        dismiss()
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
-                            model.bumpLanguageRevision()
-                        }
-                    }
-                }
+                SheetHeader(title: L("設定"), onDone: { dismiss() })
             }
             .navigationBarTitleDisplayMode(.inline)
             .onChange(of: model.state) { _, newValue in

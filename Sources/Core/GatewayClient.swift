@@ -356,8 +356,9 @@ final class GatewayClient {
 
     /// 已知被下架/不允許的模型,不要列出來
     static func bannedModel(_ id: String) -> Bool {
-        let low = id.lowercased()
-        return low.contains("qwen3-vl-32b") || low.contains("qwen3 vl 32b")
+        let low = id.lowercased().replacingOccurrences(of: " ", with: "-")
+        return low.contains("qwen3-vl") || low.contains("qwen3.7-vl") || low.contains("qwen3vl")
+            || low.contains("q3-vl")
     }
 
     func patchSessionModel(sessionKey: String, model: String) async throws {
