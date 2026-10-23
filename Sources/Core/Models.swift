@@ -50,6 +50,8 @@ struct GatewayCronJob: Identifiable, Equatable {
     let scheduleText: String
     let nextRunAt: Date?
     let lastStatus: String?
+    /// 系統內建任務(heartbeat、技能檢視等):不能手動執行/停用
+    let isSystem: Bool
 
     static func parse(_ d: [String: Any]) -> GatewayCronJob? {
         guard let id = (d["id"] as? String) ?? (d["jobId"] as? String) else { return nil }
@@ -65,8 +67,10 @@ struct GatewayCronJob: Identifiable, Equatable {
             text = at
         }
         let next = (d["nextRunAtMs"] as? Double).map { Date(timeIntervalSince1970: $0 / 1000) }
+        let system = (d["declarationKey"] as? String)?.isEmpty == false
         return GatewayCronJob(id: id, name: name, enabled: enabled, scheduleText: text,
-                              nextRunAt: next, lastStatus: d["lastRunStatus"] as? String)
+                              nextRunAt: next, lastStatus: d["lastRunStatus"] as? String,
+                              isSystem: system)
     }
 }
 
