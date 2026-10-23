@@ -14,6 +14,8 @@ struct ChatView: View {
     @State private var showPhotoPicker = false
     @State private var showFileImporter = false
     @State private var photoItem: PhotosPickerItem?
+    @State private var rootShareItems: [Any] = []
+    @State private var showRootShare = false
     @State private var sizeWarning: String?
     @StateObject private var speech = SpeechInput()
     @State private var dictationBase = ""
@@ -33,6 +35,9 @@ struct ChatView: View {
                 inputBar
                 bottomBar
             }
+        }
+        .sheet(isPresented: $showRootShare) {
+            ShareSheet(items: rootShareItems)
         }
         .alert(L("太大"), isPresented: Binding(get: { sizeWarning != nil || speech.error != nil }, set: { if !$0 { sizeWarning = nil; speech.error = nil } })) {
             Button(L("完成")) { sizeWarning = nil }
@@ -128,7 +133,11 @@ struct ChatView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 10) {
                     ForEach(model.messages.filter { !$0.isHidden }) { m in
-                        MessageBubble(message: m).id(m.id)
+                        MessageBubble(message: m) { items in
+                            rootShareItems = items
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { showRootShare = true }
+                        }
+                        .id(m.id)
                     }
                     if model.awaitingReply {
                         HStack { TypingBubble(); Spacer(minLength: 40) }
@@ -381,9 +390,8 @@ struct TypingBubble: View {
 
 struct MessageBubble: View {
     let message: ChatMessage
+    var onShare: ([Any]) -> Void = { _ in }
     @State private var previewURL: URL?
-    @State private var shareItems: [Any] = []
-    @State private var showShare = false
 
     var body: some View {
         HStack {
@@ -402,8 +410,7 @@ struct MessageBubble: View {
                                 Label(L("複製圖片"), systemImage: "doc.on.doc")
                             }
                             Button {
-                                shareItems = [ui]
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { showShare = true }
+                                onShare([ui])
                             } label: {
                                 Label(L("分享"), systemImage: "square.and.arrow.up")
                             }
@@ -423,8 +430,7 @@ struct MessageBubble: View {
                                 Label(L("複製"), systemImage: "doc.on.doc")
                             }
                             Button {
-                                shareItems = [visibleText]
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { showShare = true }
+                                onShare([visibleText])
                             } label: {
                                 Label(L("分享文字"), systemImage: "square.and.arrow.up")
                             }
@@ -438,9 +444,7 @@ struct MessageBubble: View {
             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             if message.role != .user { Spacer(minLength: 40) }
         }
-        .sheet(isPresented: $showShare) {
-            ShareSheet(items: shareItems)
-        }
+
     }
 
     /// 複製到 tmp 並保留原檔名(分享面板才不會轉圈)
@@ -471,8 +475,7 @@ struct MessageBubble: View {
         .contextMenu {
             Button {
                 if let tmp = MessageBubble.copyToTemp(path: path, name: name) {
-                    shareItems = [tmp]
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { showShare = true }
+                    onShare([tmp])
                 }
             } label: {
                 Label(L("分享"), systemImage: "square.and.arrow.up")
