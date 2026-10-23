@@ -40,7 +40,10 @@ struct ChatView: View {
         } message: {
             Text(sizeWarning ?? speech.error ?? "")
         }
-        .onAppear { restoreDraft() }
+        .onAppear {
+            restoreDraft()
+            Task { await Store.shared.refreshEntitlement() }
+        }
         .onChange(of: model.currentSession?.id) { _, _ in restoreDraft() }
         .onChange(of: draft) { _, v in persistDraft(v) }
         .onChange(of: speech.transcript) { _, t in

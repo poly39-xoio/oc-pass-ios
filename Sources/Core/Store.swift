@@ -68,14 +68,30 @@ final class Store: ObservableObject {
 
     func refreshEntitlement() async {
         var active = false
+        var latestJWS: String?
         for await item in Transaction.currentEntitlements {
             guard case .verified(let tx) = item else { continue }
             guard tx.productID == Self.monthly || tx.productID == Self.yearly else { continue }
             if tx.revocationDate == nil, tx.expirationDate.map({ $0 > Date() }) ?? true {
                 active = true
+                latestJWS = item.jwsRepresentation
             }
         }
         subscribed = active
+        if let jws = latestJWS { await pushEntitlement(jws) }
+    }
+
+    /// 把已驗證的交易交給 relay → 換成 1GB/月(伺服器會再向 Apple 驗一次)
+    private func pushEntitlement(_ jws: String) async {
+        guard let cred = RelayCredStore.load() else { return }
+        guard let url = URL(string: "https://xoio.io/relay/entitle") else { return }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try? JSONSerialization.data(withJSONObject: [
+            "channel": cred.channel, "secret": cred.secret, "jws": jws
+        ])
+        _ = try? await URLSession.shared.data(for: req)
     }
 
     /// 顯示用:每月價格字串
