@@ -11,6 +11,7 @@ struct SettingsView: View {
     @State private var showHelp = false
 
     var body: some View {
+        let _ = model.languageRevision
         NavigationStack {
             ZStack {
                 Theme.background
@@ -112,9 +113,6 @@ struct SettingsView: View {
                                     Text("English").tag("en")
                                 }
                                 .pickerStyle(.segmented)
-                                Text(L("切換後請重新開啟 App 生效"))
-                                    .font(Theme.ui(11))
-                                    .foregroundStyle(Theme.muted)
                             }
                         }
 

@@ -7,6 +7,7 @@ struct DashboardView: View {
     @State private var deviceToRemove: PairedDevice?
 
     var body: some View {
+        let _ = model.languageRevision
         NavigationStack {
             ZStack {
                 Theme.background

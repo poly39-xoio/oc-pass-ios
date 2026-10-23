@@ -5,6 +5,7 @@ struct SessionListView: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
+        let _ = model.languageRevision
         NavigationStack {
             ZStack {
                 Theme.background

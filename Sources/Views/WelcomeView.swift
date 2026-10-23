@@ -4,6 +4,7 @@ struct WelcomeView: View {
     @EnvironmentObject var model: AppModel
 
     var body: some View {
+        let _ = model.languageRevision
         ZStack {
             Theme.background
 

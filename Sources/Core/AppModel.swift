@@ -40,9 +40,11 @@ final class AppModel: ObservableObject {
         return currentSession?.title ?? "OC Pass"
     }
 
-    /// 只寫入設定,不在同一次更新中改動畫面狀態(避免 SwiftUI view graph 崩潰)
+    /// 立即切換:寫入設定並通知各畫面重繪(不重建整個 view tree)
     func setLanguage(_ value: String) {
+        guard value != Language.current else { return }
         Language.current = value
+        languageRevision += 1
     }
 
     func bumpLanguageRevision() {
