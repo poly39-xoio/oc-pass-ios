@@ -362,6 +362,8 @@ struct TypingBubble: View {
 struct MessageBubble: View {
     let message: ChatMessage
     @State private var previewURL: URL?
+    @State private var shareItems: [Any] = []
+    @State private var showShare = false
 
     var body: some View {
         HStack {
@@ -379,10 +381,11 @@ struct MessageBubble: View {
                             } label: {
                                 Label(L("複製圖片"), systemImage: "doc.on.doc")
                             }
-                            if let url = MessageBubble.tempImageURL(data) {
-                                ShareLink(item: url) {
-                                    Label(L("分享"), systemImage: "square.and.arrow.up")
-                                }
+                            Button {
+                                shareItems = [ui]
+                                showShare = true
+                            } label: {
+                                Label(L("分享"), systemImage: "square.and.arrow.up")
                             }
                         }
                 }
@@ -393,6 +396,14 @@ struct MessageBubble: View {
                     Text(visibleText)
                         .font(Theme.ui(15))
                         .textSelection(.enabled)
+                        .contextMenu {
+                            Button {
+                                shareItems = [visibleText]
+                                showShare = true
+                            } label: {
+                                Label(L("分享文字"), systemImage: "square.and.arrow.up")
+                            }
+                        }
                 }
             }
             .padding(.horizontal, 12)
@@ -402,6 +413,18 @@ struct MessageBubble: View {
             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             if message.role != .user { Spacer(minLength: 40) }
         }
+        .sheet(isPresented: $showShare) {
+            ShareSheet(items: shareItems)
+        }
+    }
+
+    /// 複製到 tmp 並保留原檔名(分享面板才不會轉圈)
+    static func copyToTemp(path: String, name: String) -> URL? {
+        let src = URL(fileURLWithPath: path)
+        let safe = name.replacingOccurrences(of: "/", with: "_")
+        let dst = FileManager.default.temporaryDirectory.appendingPathComponent(safe)
+        try? FileManager.default.removeItem(at: dst)
+        do { try FileManager.default.copyItem(at: src, to: dst); return dst } catch { return nil }
     }
 
     @ViewBuilder
@@ -421,7 +444,14 @@ struct MessageBubble: View {
         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
         .onTapGesture { previewURL = url }
         .contextMenu {
-            ShareLink(item: url) { Label(L("分享"), systemImage: "square.and.arrow.up") }
+            Button {
+                if let tmp = MessageBubble.copyToTemp(path: path, name: name) {
+                    shareItems = [tmp]
+                    showShare = true
+                }
+            } label: {
+                Label(L("分享"), systemImage: "square.and.arrow.up")
+            }
             Button { previewURL = url } label: { Label(L("快速查看"), systemImage: "eye") }
         }
         .quickLookPreview($previewURL)
