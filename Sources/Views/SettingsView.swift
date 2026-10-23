@@ -14,10 +14,6 @@ struct SettingsView: View {
         NavigationStack {
             ZStack {
                 Theme.background
-                VStack(spacing: 0) {
-                SheetHeader(title: L("設定"), onDone: { dismiss() }) {
-                    LanguagePill { model.setLanguage(Language.isEnglish ? "zh" : "en") }
-                }
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
                         section(L("使用者名稱")) {
@@ -133,6 +129,10 @@ struct SettingsView: View {
                 }
                 .scrollDismissesKeyboard(.interactively)
                 .simultaneousGesture(TapGesture().onEnded { hideKeyboard() })
+            }
+            .safeAreaInset(edge: .top) {
+                SheetHeader(title: L("設定"), onDone: { dismiss() }) {
+                    LanguagePill { model.setLanguage(Language.isEnglish ? "zh" : "en") }
                 }
             }
             .navigationTitle(L("設定"))

@@ -10,8 +10,6 @@ struct DashboardView: View {
         NavigationStack {
             ZStack {
                 Theme.background
-                VStack(spacing: 0) {
-                SheetHeader(title: L("控制台"), onDone: { dismiss() })
                 ScrollView {
                     VStack(spacing: 14) {
                         connectionCard
@@ -26,7 +24,9 @@ struct DashboardView: View {
                     .padding(16)
                 }
                 .refreshable { await model.loadDashboard() }
-                }
+            }
+            .safeAreaInset(edge: .top) {
+                SheetHeader(title: L("控制台"), onDone: { dismiss() })
             }
             .navigationTitle("控制台")
             .navigationBarTitleDisplayMode(.inline)
