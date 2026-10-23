@@ -458,9 +458,9 @@ struct MessageBubble: View {
                     fileCard(path: path, name: message.attachmentName ?? URL(fileURLWithPath: path).lastPathComponent)
                 }
                 if !visibleText.isEmpty {
-                    Text(visibleText)
+                    Text(Linkified.attributed(visibleText))
                         .font(Theme.ui(15))
-                        .textSelection(.enabled)
+                        .tint(Theme.accent)
                         .contextMenu {
                             Button {
                                 UIPasteboard.general.string = visibleText
