@@ -118,6 +118,14 @@ struct SettingsView: View {
                                 Text(L("3. 沒有網域或公網 IP?可在設定改用 XOIO Relay(訂閱制)。"))
                                 Text(L("檔案上限:圖片 6 MB、其他檔案 18 MB。"))
                                 Text(L("隨時可在設定頁「移除這台裝置」斷開配對。"))
+                                Link(destination: URL(string: "mailto:io@xoio.io")!) {
+                                    Text("✉️ io@xoio.io")
+                                        .font(Theme.ui(13, .semibold))
+                                        .foregroundStyle(Theme.accent)
+                                }
+                                Text(L("有問題或需要協助，歡迎寫信給我們。"))
+                                    .font(Theme.ui(12))
+                                    .foregroundStyle(Theme.ink.opacity(0.75))
                             }
                             .font(Theme.ui(12))
                             .foregroundStyle(Theme.ink)

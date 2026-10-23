@@ -101,3 +101,25 @@ enum TranscriptCache {
         try? FileManager.default.removeItem(at: file)
     }
 }
+
+/// Relay 通道憑證(存 Keychain → 刪掉 App 重裝仍在,可自動取回原本的線)
+enum RelayCredStore {
+    private static let kChannel = "relay.channel"
+    private static let kSecret = "relay.secret"
+
+    static func save(channel: String, secret: String) {
+        Keychain.set(channel, for: kChannel)
+        Keychain.set(secret, for: kSecret)
+    }
+
+    static func load() -> (channel: String, secret: String)? {
+        guard let c = Keychain.get(kChannel), let s = Keychain.get(kSecret),
+              !c.isEmpty, !s.isEmpty else { return nil }
+        return (c, s)
+    }
+
+    static func clear() {
+        Keychain.delete(kChannel)
+        Keychain.delete(kSecret)
+    }
+}

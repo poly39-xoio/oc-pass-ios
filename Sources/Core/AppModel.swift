@@ -679,8 +679,27 @@ final class AppModel: ObservableObject {
 
     // MARK: - Relay trial
 
-    /// 免費試用 3 天:向 relay 申請 72 小時通道,拿到安裝指令
+    /// 免費層:優先沿用 Keychain 裡的通道(重裝也還在);沒有才申請新的
     func startTrial() {
+        guard !trialLoading else { return }
+        if let saved = RelayCredStore.load() {
+            applyChannel(saved.channel, saved.secret)
+            Task {
+                if await Self.relayReachable(channel: saved.channel, secret: saved.secret) == false {
+                    RelayCredStore.clear()
+                    await MainActor.run {
+                        self.trialChannel = nil
+                        self.trialSecret = nil
+                        self.requestNewTrial()
+                    }
+                }
+            }
+            return
+        }
+        requestNewTrial()
+    }
+
+    private func requestNewTrial() {
         guard !trialLoading else { return }
         trialLoading = true
         trialError = nil
@@ -690,7 +709,7 @@ final class AppModel: ObservableObject {
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         let deviceId = DeviceIdentity.loadOrCreate().deviceId
         req.httpBody = try? JSONSerialization.data(withJSONObject: ["deviceId": deviceId])
-        URLSession.shared.dataTask(with: req) { data, resp, err in
+        URLSession.shared.dataTask(with: req) { data, _, err in
             defer { DispatchQueue.main.async { self.trialLoading = false } }
             if let err { DispatchQueue.main.async { self.trialError = err.localizedDescription }; return }
             guard let data,
@@ -698,25 +717,67 @@ final class AppModel: ObservableObject {
                 DispatchQueue.main.async { self.trialError = "Relay 回應格式錯誤" }; return
             }
             if let e = obj["error"] as? String {
-                DispatchQueue.main.async {
-                    self.trialError = (e == "trial already used") ? "這台裝置已用過免費試用" : e
+                if e == "trial already used" {
+                    DispatchQueue.main.async { self.recoverChannel() }
+                } else {
+                    DispatchQueue.main.async { self.trialError = e }
                 }
                 return
             }
             guard let id = obj["id"] as? String, let secret = obj["secret"] as? String else {
                 DispatchQueue.main.async { self.trialError = "Relay 沒有回傳通道資訊" }; return
             }
-            let cmd = "curl -fsSL https://xoio.io/relay-install/install.sh | bash -s -- \(id)?k=\(secret)"
-            DispatchQueue.main.async {
-                self.trialCommand = cmd
-                self.trialChannel = id
-                self.trialSecret = secret
-                if let s = obj["expiresAt"] as? String {
-                    let f = ISO8601DateFormatter(); self.trialExpiresAt = f.date(from: s)
-                }
-                self.startTrialWatch()
-            }
+            DispatchQueue.main.async { self.applyChannel(id, secret) }
         }.resume()
+    }
+
+    /// 重裝/換機後用裝置 ed25519 簽章把原本的通道取回
+    func recoverChannel() {
+        trialLoading = true
+        let dev = DeviceIdentity.loadOrCreate()
+        let ts = Int(Date().timeIntervalSince1970 * 1000)
+        let payload = "recover|\(dev.deviceId)|\(ts)"
+        guard let sig = dev.sign(payload),
+              let url = URL(string: "https://xoio.io/relay/recover") else {
+            trialLoading = false; trialError = "裝置簽章失敗"; return
+        }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        req.httpBody = try? JSONSerialization.data(withJSONObject: [
+            "deviceId": dev.deviceId, "publicKey": dev.publicKeyBase64URL, "ts": ts, "sig": sig
+        ])
+        URLSession.shared.dataTask(with: req) { data, _, _ in
+            defer { DispatchQueue.main.async { self.trialLoading = false } }
+            guard let data,
+                  let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                  let id = obj["id"] as? String, let secret = obj["secret"] as? String else {
+                DispatchQueue.main.async { self.trialError = "取不回原本的連線，請稍後再試" }
+                return
+            }
+            DispatchQueue.main.async { self.applyChannel(id, secret) }
+        }.resume()
+    }
+
+    private func applyChannel(_ id: String, _ secret: String) {
+        trialChannel = id
+        trialSecret = secret
+        trialCommand = Self.installCommand(id, secret)
+        RelayCredStore.save(channel: id, secret: secret)
+        startTrialWatch()
+    }
+
+    static func installCommand(_ id: String, _ secret: String) -> String {
+        "curl -fsSL https://xoio.io/relay-install/install.sh | bash -s -- \(id)?k=\(secret)"
+    }
+
+    /// 通道還有效嗎?被撤銷/不存在 → false
+    static func relayReachable(channel: String, secret: String) async -> Bool? {
+        guard let url = URL(string: "https://xoio.io/relay/status/\(channel)?k=\(secret)") else { return nil }
+        guard let (_, resp) = try? await URLSession.shared.data(from: url),
+              let code = (resp as? HTTPURLResponse)?.statusCode else { return nil }
+        if code == 403 || code == 404 { return false }
+        return code == 200 ? true : nil
     }
 
     /// 電腦端安裝完會把配對碼放到 relay（只在記憶體）；這裡輪詢領取後自動連上

@@ -113,7 +113,13 @@ private let EN: [String: String] = [
     "刪除訊息": "Delete message",
     "刪除照片": "Delete photo",
     "刪除檔案": "Delete file",
-    "清除本機紀錄": "Clear local history"
+    "清除本機紀錄": "Clear local history",
+    // 支援信箱 / 連線取回
+    "有問題或需要協助，歡迎寫信給我們。": "Questions or need help? Email us anytime.",
+    "取不回原本的連線，請稍後再試": "Couldn't restore your previous connection — please try again.",
+    "裝置簽章失敗": "Device signing failed.",
+    "Relay 回應格式錯誤": "Unexpected response from relay.",
+    "Relay 沒有回傳通道資訊": "Relay did not return channel info."
 ]
 
 func L(_ key: String) -> String {
