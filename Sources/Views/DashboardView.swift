@@ -49,11 +49,11 @@ struct DashboardView: View {
     // MARK: - 連線
 
     private var connectionCard: some View {
-        card("連線") {
-            row("Gateway", model.gatewayURL?.host ?? "—")
-            row("版本", model.gatewayVersion.isEmpty ? "—" : model.gatewayVersion)
-            row("延遲", model.latencyMs.map { String(format: "%.0f ms", $0) } ?? "—")
-            row("狀態", model.isDemo ? "Demo" : (model.isConnected ? "已連線" : "未連線"))
+        card(L("連線")) {
+            row(L("Gateway"), model.gatewayURL?.host ?? "—")
+            row(L("版本"), model.gatewayVersion.isEmpty ? "—" : model.gatewayVersion)
+            row(L("延遲"), model.latencyMs.map { String(format: "%.0f ms", $0) } ?? "—")
+            row(L("狀態"), model.isDemo ? "Demo" : (model.isConnected ? L("已連線") : L("未連線")))
             if let err = model.dashboardError {
                 Text(err).font(Theme.ui(11)).foregroundStyle(Theme.warn)
             }
@@ -64,11 +64,11 @@ struct DashboardView: View {
     }
 
     private var usageCard: some View {
-        card("用量") {
-            row("會話數", "\(model.sessions.count)")
-            row("總 tokens", formatTokens(model.totalTokens))
+        card(L("用量")) {
+            row(L("會話數"), "\(model.sessions.count)")
+            row(L("總 tokens"), formatTokens(model.totalTokens))
             if let top = model.sessions.max(by: { $0.totalTokens < $1.totalTokens }), top.totalTokens > 0 {
-                row("最重會話", "\(top.title) · \(formatTokens(top.totalTokens))")
+                row(L("最重會話"), "\(top.title) · \(formatTokens(top.totalTokens))")
             }
         }
     }
@@ -76,7 +76,7 @@ struct DashboardView: View {
     // MARK: - 模型
 
     private var modelCard: some View {
-        card("本會話模型") {
+        card(L("本會話模型")) {
             HStack {
                 Text(model.currentSession?.title ?? "—")
                     .font(Theme.ui(12)).foregroundStyle(Theme.muted).lineLimit(1)
@@ -115,7 +115,7 @@ struct DashboardView: View {
     // MARK: - 待核准
 
     private var approvalsCard: some View {
-        card("待核准 (\(model.pendingApprovals.count))") {
+        card("\(L("待核准")) (\(model.pendingApprovals.count))") {
             if model.pendingApprovals.isEmpty {
                 Text(L("沒有待核准的請求")).font(Theme.ui(12)).foregroundStyle(Theme.muted)
             } else {
@@ -148,7 +148,7 @@ struct DashboardView: View {
     // MARK: - 已配對裝置
 
     private var devicesCard: some View {
-        card("已配對裝置 (\(model.pairedDevices.count))") {
+        card("\(L("已配對裝置")) (\(model.pairedDevices.count))") {
             if model.pairedDevices.isEmpty {
                 Text(L("沒有已配對裝置")).font(Theme.ui(12)).foregroundStyle(Theme.muted)
             } else {
@@ -176,9 +176,9 @@ struct DashboardView: View {
     // MARK: - 任務
 
     private var cronCard: some View {
-        card("自動化任務 (\(model.cronJobs.count))") {
+        card("\(L("自動化任務")) (\(model.cronJobs.count))") {
             if model.cronJobs.isEmpty {
-                Text(model.dashboardLoading ? "載入中…" : "沒有任務")
+                Text(model.dashboardLoading ? L("載入中…") : L("沒有任務"))
                     .font(Theme.ui(12)).foregroundStyle(Theme.muted)
             } else {
                 ForEach(model.cronJobs.prefix(10)) { job in
@@ -227,9 +227,9 @@ struct DashboardView: View {
     // MARK: - 節點
 
     private var nodesCard: some View {
-        card("節點 (\(model.nodes.count))") {
+        card("\(L("節點")) (\(model.nodes.count))") {
             if model.nodes.isEmpty {
-                Text(model.dashboardLoading ? "載入中…" : "沒有已配對節點")
+                Text(model.dashboardLoading ? L("載入中…") : L("沒有已配對節點"))
                     .font(Theme.ui(12)).foregroundStyle(Theme.muted)
             } else {
                 ForEach(model.nodes.prefix(8)) { n in
@@ -250,7 +250,7 @@ struct DashboardView: View {
     // MARK: - 會話
 
     private var sessionsCard: some View {
-        card("最近會話") {
+        card(L("最近會話")) {
             if model.sessions.isEmpty {
                 Text(L("沒有會話")).font(Theme.ui(12)).foregroundStyle(Theme.muted)
             } else {
