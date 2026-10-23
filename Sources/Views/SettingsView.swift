@@ -279,9 +279,8 @@ struct SettingsView: View {
         if !s.contains("://") { s = "wss://" + s }
         if s.hasPrefix("https://") { s = "wss://" + s.dropFirst("https://".count) }
         if s.hasPrefix("http://") { s = "ws://" + s.dropFirst("http://".count) }
-        if !s.hasSuffix("/oc") && !s.hasSuffix("/oc/") {
-            if s.hasSuffix("/") { s += "oc" } else { s += "/oc" }
-        }
+        // 不再自動補 /oc:OpenClaw gateway 直連是 ws://host:18789(路徑 /),
+        // 走反向代理的人自己會填 /oc,不要幫他改路徑。
         return URL(string: s)
     }
 }
