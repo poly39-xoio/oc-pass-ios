@@ -765,6 +765,7 @@ final class AppModel: ObservableObject {
         trialCommand = Self.installCommand(id, secret)
         RelayCredStore.save(channel: id, secret: secret)
         startTrialWatch()
+        Task { await Store.shared.refreshEntitlement() }
     }
 
     static func installCommand(_ id: String, _ secret: String) -> String {
