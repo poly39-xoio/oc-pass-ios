@@ -120,8 +120,11 @@ private let EN: [String: String] = [
     "用手動配對碼連線": "Connect with pairing code",
     "只有自動連線失敗時才需要：在電腦執行 cat ~/.oc-tunnel/pair-code.txt，把整串貼進來。":
         "Only needed when auto-connect fails: on your computer run cat ~/.oc-tunnel/pair-code.txt and paste the whole string here.",
-    "填你自己 gateway 的位址；沒有網域或公網 IP，請用上面的 XOIO Relay。":
-        "Enter your own gateway address. If you have no domain or public IP, use XOIO Relay above.",
+    "填你自己 gateway 的位址；沒有網域或公網 IP，請用下面的 XOIO Relay。":
+        "Enter your own gateway address. If you have no domain or public IP, use XOIO Relay below.",
+    "用電腦執行 openclaw qr，掃它產生的 QR": "Run openclaw qr on your computer and scan its QR",
+    "自己填位址與 token（進階）": "Enter URL and token yourself (advanced)",
+    "不用連線，先看看介面": "No connection needed — take a look",
     "取不回原本的連線，請稍後再試": "Couldn't restore your previous connection — please try again.",
     "裝置簽章失敗": "Device signing failed.",
     "Relay 回應格式錯誤": "Unexpected response from relay.",

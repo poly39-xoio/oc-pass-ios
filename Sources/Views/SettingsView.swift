@@ -48,7 +48,7 @@ struct SettingsView: View {
                                         .foregroundStyle(Theme.ink)
                                 }
                                 if mode == "direct" {
-                                    Text(L("填你自己 gateway 的位址；沒有網域或公網 IP，請用上面的 XOIO Relay。"))
+                                    Text(L("填你自己 gateway 的位址；沒有網域或公網 IP，請用下面的 XOIO Relay。"))
                                         .font(Theme.ui(11))
                                         .foregroundStyle(Theme.muted)
                                         .frame(maxWidth: .infinity, alignment: .leading)

@@ -38,10 +38,12 @@ struct WelcomeView: View {
                     Button {
                         model.showScanner = true
                     } label: {
-                        Text(L("掃描 QR 連線"))
-                            .font(Theme.ui(16, .bold))
+                        VStack(spacing: 3) {
+                            Text(L("掃描 QR 連線")).font(Theme.ui(16, .bold))
+                            Text(L("用電腦執行 openclaw qr，掃它產生的 QR")).font(Theme.ui(11)).opacity(0.85)
+                        }
                             .foregroundStyle(.white)
-                            .frame(maxWidth: .infinity, minHeight: 52)
+                            .frame(maxWidth: .infinity, minHeight: 56)
                             .background(Theme.accent)
                             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                     }
@@ -49,10 +51,12 @@ struct WelcomeView: View {
                     Button {
                         model.showSettings = true
                     } label: {
-                        Text(L("手動輸入 gateway"))
-                            .font(Theme.ui(16, .semibold))
+                        VStack(spacing: 3) {
+                            Text(L("手動輸入 gateway")).font(Theme.ui(16, .semibold))
+                            Text(L("自己填位址與 token（進階）")).font(Theme.ui(11)).opacity(0.75)
+                        }
                             .foregroundStyle(Theme.ink)
-                            .frame(maxWidth: .infinity, minHeight: 52)
+                            .frame(maxWidth: .infinity, minHeight: 56)
                             .background(Theme.panel2)
                             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                             .overlay(
@@ -64,10 +68,12 @@ struct WelcomeView: View {
                     Button {
                         model.startDemo()
                     } label: {
-                        Text(L("Demo"))
-                            .font(Theme.ui(14, .bold))
+                        VStack(spacing: 3) {
+                            Text(L("Demo")).font(Theme.ui(14, .bold))
+                            Text(L("不用連線，先看看介面")).font(Theme.ui(11)).opacity(0.7)
+                        }
                             .foregroundStyle(Theme.ink)
-                            .frame(maxWidth: .infinity, minHeight: 44)
+                            .frame(maxWidth: .infinity, minHeight: 52)
                             .background(Theme.panel2)
                             .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                     }

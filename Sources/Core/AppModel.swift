@@ -492,6 +492,18 @@ final class AppModel: ObservableObject {
         guard !(trimmed.isEmpty && attachments.isEmpty), let session = currentSession else { return }
         let shown = trimmed.isEmpty ? (attachments.count == 1 ? "[附件] \(attachments[0].name)" : "[附件] \(attachments.count) 個檔案") : trimmed
         var userMessage = ChatMessage(role: .user, text: shown)
+        if isDemo {
+            messages.append(userMessage)
+            saveTranscript()
+            awaitingReply = true
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: 700_000_000)
+                self.messages.append(ChatMessage(role: .assistant, text: DemoData.reply(to: trimmed)))
+                self.awaitingReply = false
+                self.saveTranscript()
+            }
+            return
+        }
         if let img = attachments.first(where: { $0.isImage })?.data {
             userMessage.imageData = img
         }
