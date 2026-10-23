@@ -11,6 +11,7 @@ struct SettingsView: View {
     @State private var showHelp = false
     @State private var mode = "direct"
     @State private var relayCode = ""
+    @State private var showPaywall = false
     @State private var showTrial = false
 
     var body: some View {
@@ -91,13 +92,19 @@ struct SettingsView: View {
 
                         section("XOIO Relay") {
                             VStack(alignment: .leading, spacing: 8) {
-                                Text(L("不用網域、不用開 port，出門也能連。先免費試用 1 天。"))
+                                Text(L("不用網域、不用開 port，出門也能連。前 3 天免費，之後 $2.99/月 或 $24.99/年。"))
                                     .font(Theme.ui(12)).foregroundStyle(Theme.ink)
-                                Button(L("免費試用 1 天")) { showTrial = true }
+                                Button(L("免費連線（3 天）")) { showTrial = true }
                                     .font(Theme.ui(15, .bold))
                                     .foregroundStyle(.white)
                                     .frame(maxWidth: .infinity, minHeight: 46)
                                     .background(Theme.accent)
+                                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                Button(L("訂閱 / 還原購買")) { showPaywall = true }
+                                    .font(Theme.ui(14, .semibold))
+                                    .foregroundStyle(Theme.ink)
+                                    .frame(maxWidth: .infinity, minHeight: 42)
+                                    .background(Theme.panel)
                                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                             }
                         }
@@ -185,6 +192,7 @@ struct SettingsView: View {
             }
             .onAppear { name = model.userName }
             .sheet(isPresented: $showTrial) { RelayTrialView().environmentObject(model) }
+            .sheet(isPresented: $showPaywall) { PaywallView() }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(.hidden, for: .navigationBar)
             .toolbar {

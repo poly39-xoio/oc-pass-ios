@@ -1,0 +1,85 @@
+import Foundation
+import StoreKit
+
+/// StoreKit 2:訂閱管理(月/年),3 天免費試用由 App Store 的 introductory offer 處理
+@MainActor
+final class Store: ObservableObject {
+    static let shared = Store()
+    static let monthly = "io.xoio.ocpass.relay.monthly"
+    static let yearly = "io.xoio.ocpass.relay.yearly"
+
+    @Published var products: [Product] = []
+    @Published var subscribed = false
+    @Published var loading = false
+    @Published var error: String?
+
+    private var updates: Task<Void, Never>?
+
+    init() {
+        updates = Task { [weak self] in
+            for await _ in Transaction.updates {
+                await self?.refreshEntitlement()
+            }
+        }
+    }
+
+    deinit { updates?.cancel() }
+
+    func load() async {
+        loading = true
+        error = nil
+        do {
+            let list = try await Product.products(for: [Self.monthly, Self.yearly])
+            // 月在前、年在後
+            products = list.sorted {
+                ($0.id == Self.monthly ? 0 : 1) < ($1.id == Self.monthly ? 0 : 1)
+            }
+            if products.isEmpty { error = "找不到訂閱商品(可能還在 App Store Connect 審核設定中)" }
+            await refreshEntitlement()
+        } catch {
+            self.error = error.localizedDescription
+        }
+        loading = false
+    }
+
+    func buy(_ product: Product) async {
+        do {
+            let result = try await product.purchase()
+            switch result {
+            case .success(let verification):
+                if case .verified(let tx) = verification { await tx.finish() }
+                await refreshEntitlement()
+            case .userCancelled, .pending:
+                break
+            @unknown default:
+                break
+            }
+        } catch {
+            self.error = error.localizedDescription
+        }
+    }
+
+    func restore() async {
+        loading = true
+        try? await AppStore.sync()
+        await refreshEntitlement()
+        loading = false
+    }
+
+    func refreshEntitlement() async {
+        var active = false
+        for await item in Transaction.currentEntitlements {
+            guard case .verified(let tx) = item else { continue }
+            guard tx.productID == Self.monthly || tx.productID == Self.yearly else { continue }
+            if tx.revocationDate == nil, tx.expirationDate.map({ $0 > Date() }) ?? true {
+                active = true
+            }
+        }
+        subscribed = active
+    }
+
+    /// 顯示用:每月價格字串
+    func price(_ product: Product) -> String {
+        product.displayPrice
+    }
+}
