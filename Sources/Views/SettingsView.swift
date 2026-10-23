@@ -55,7 +55,7 @@ struct SettingsView: View {
                                     }
                                 } else {
                                 field("url") {
-                                    TextField("ws://192.168.1.20:18789 或 wss://your-gateway", text: $url)
+                                    TextField("ws://host:18789  ·  wss://your-gateway", text: $url)
                                         .textInputAutocapitalization(.never)
                                         .autocorrectionDisabled()
                                         .keyboardType(.URL)
