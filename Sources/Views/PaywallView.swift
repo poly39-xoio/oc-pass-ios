@@ -14,7 +14,7 @@ struct PaywallView: View {
                     VStack(alignment: .leading, spacing: 16) {
                         SheetHeader(title: L("訂閱 Relay"), onDone: { dismiss() })
 
-                        Text(L("前 3 天免費，之後自動續訂。可隨時在 Apple ID 設定取消。"))
+                        Text(L("前 3 天免費，之後自動續訂（1GB/月）。可隨時在 Apple ID 設定取消。"))
                             .font(Theme.ui(13))
                             .foregroundStyle(.white.opacity(0.8))
 
@@ -36,7 +36,7 @@ struct PaywallView: View {
                             ForEach(store.products, id: \.id) { p in
                                 productRow(p)
                             }
-                            Text(L("訂閱可解鎖 Relay 連線（每月 1GB 流量）。"))
+                            Text(L("免費層 100MB/月；訂閱後 1GB/月。"))
                                 .font(Theme.ui(12))
                                 .foregroundStyle(.white.opacity(0.6))
                         }

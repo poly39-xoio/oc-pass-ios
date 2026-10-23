@@ -15,7 +15,7 @@ struct RelayTrialView: View {
                     VStack(alignment: .leading, spacing: 16) {
                         SheetHeader(title: L("一鍵連線"), onDone: { dismiss() })
 
-                        Text(L("免費 3 天 · 之後 $2.99/月 或 $24.99/年（年繳省 30%）"))
+                        Text(L("免費方案：100MB/月 · 需要更多可訂閱 $2.99/月 或 $24.99/年（前 3 天免費）"))
                             .font(Theme.ui(12))
                             .foregroundStyle(.white.opacity(0.7))
 
@@ -67,7 +67,7 @@ struct RelayTrialView: View {
                             Text(L("按下面按鈕，30 秒內就能連上你的 OpenClaw"))
                                 .font(Theme.ui(14))
                                 .foregroundStyle(.white)
-                            bigButton(L("開始免費連線")) { model.startTrial() }
+                            bigButton(L("免費連線")) { model.startTrial() }
                             Text(L("不需要註冊帳號，也不必自己有網域或公網 IP。"))
                                 .font(Theme.ui(12))
                                 .foregroundStyle(.white.opacity(0.6))

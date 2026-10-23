@@ -92,9 +92,9 @@ struct SettingsView: View {
 
                         section("XOIO Relay") {
                             VStack(alignment: .leading, spacing: 8) {
-                                Text(L("不用網域、不用開 port，出門也能連。前 3 天免費，之後 $2.99/月 或 $24.99/年。"))
+                                Text(L("不用網域、不用開 port，出門也能連。免費 100MB/月；訂閱 $2.99/月 或 $24.99/年（前 3 天免費，1GB/月）。"))
                                     .font(Theme.ui(12)).foregroundStyle(Theme.ink)
-                                Button(L("免費連線（3 天）")) { showTrial = true }
+                                Button(L("免費連線（100MB/月）")) { showTrial = true }
                                     .font(Theme.ui(15, .bold))
                                     .foregroundStyle(.white)
                                     .frame(maxWidth: .infinity, minHeight: 46)
