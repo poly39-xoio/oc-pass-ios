@@ -10,6 +10,8 @@ struct DashboardView: View {
         NavigationStack {
             ZStack {
                 Theme.background
+                VStack(spacing: 0) {
+                SheetHeader(title: L("控制台"), onDone: { dismiss() })
                 ScrollView {
                     VStack(spacing: 14) {
                         connectionCard
@@ -24,19 +26,10 @@ struct DashboardView: View {
                     .padding(16)
                 }
                 .refreshable { await model.loadDashboard() }
+                }
             }
             .navigationTitle("控制台")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button { dismiss() } label: {
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 14, weight: .semibold))
-                            .frame(width: 30, height: 30)
-                    }
-                    .accessibilityLabel(L("完成"))
-                }
-            }
             .task { await model.loadDashboard() }
             .confirmationDialog("撤銷這台裝置？", isPresented: Binding(
                 get: { deviceToRemove != nil },

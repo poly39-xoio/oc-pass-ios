@@ -8,6 +8,8 @@ struct SessionListView: View {
         NavigationStack {
             ZStack {
                 Theme.background
+                VStack(spacing: 0) {
+                SheetHeader(title: L("工作階段"), onDone: { dismiss() })
                 ScrollView {
                     LazyVStack(spacing: 8) {
                         ForEach(model.sessions) { s in
@@ -51,6 +53,7 @@ struct SessionListView: View {
                     .padding(16)
                 }
                 .refreshable { await model.refreshSessions() }
+                }
 
                 if model.sessions.isEmpty {
                     Text(L("沒有工作階段")).font(Theme.ui(13)).foregroundStyle(.white.opacity(0.75))
@@ -58,9 +61,6 @@ struct SessionListView: View {
             }
             .navigationTitle("工作階段")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) { Button(L("完成")) { dismiss() } }
-            }
         }
     }
 }

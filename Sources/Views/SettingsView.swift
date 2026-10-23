@@ -14,6 +14,10 @@ struct SettingsView: View {
         NavigationStack {
             ZStack {
                 Theme.background
+                VStack(spacing: 0) {
+                SheetHeader(title: L("設定"), onDone: { dismiss() }) {
+                    LanguagePill { model.setLanguage(Language.isEnglish ? "zh" : "en") }
+                }
                 ScrollView {
                     VStack(alignment: .leading, spacing: 16) {
                         section(L("使用者名稱")) {
@@ -72,6 +76,7 @@ struct SettingsView: View {
                         section(L("使用說明")) {
                             VStack(alignment: .leading, spacing: 8) {
                                 Text(L("OC Pass 是針對 OpenClaw Gateway 所設計的優化器。"))
+                                Text(L("我們不會收集你的對話與資料,內容只會送到你自己的 gateway。"))
                                 Text(L("1. 在你的電腦或伺服器安裝 OpenClaw,並啟動 gateway。"))
                                 Text(L("2. 在 gateway 上執行 openclaw qr,用手機掃描產生的 QR。"))
                                 Text(L("3. 沒有網域或公網 IP?可在設定改用 XOIO Relay(訂閱制)。"))
@@ -128,6 +133,7 @@ struct SettingsView: View {
                 }
                 .scrollDismissesKeyboard(.interactively)
                 .simultaneousGesture(TapGesture().onEnded { hideKeyboard() })
+                }
             }
             .navigationTitle(L("設定"))
             .navigationBarTitleDisplayMode(.inline)
@@ -135,24 +141,9 @@ struct SettingsView: View {
                 if case .ready = newValue { dismiss() }
             }
             .onAppear { name = model.userName }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar(.hidden, for: .navigationBar)
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button {
-                        model.setLanguage(Language.isEnglish ? "zh" : "en")
-                    } label: {
-                        Text(Language.isEnglish ? "中" : "EN")
-                            .font(Theme.ui(14, .bold))
-                            .frame(width: 34, height: 30)
-                    }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button { dismiss() } label: {
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 14, weight: .semibold))
-                            .frame(width: 30, height: 30)
-                    }
-                    .accessibilityLabel(L("完成"))
-                }
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
                     Button(L("收鍵盤")) { hideKeyboard() }
