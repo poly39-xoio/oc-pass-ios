@@ -4,7 +4,7 @@ import UIKit
 struct SettingsView: View {
     @EnvironmentObject var model: AppModel
     @Environment(\.dismiss) private var dismiss
-    @State private var url = "wss://xoio.io/oc"
+    @State private var url = ""
     @State private var name = ""
     @State private var token: TokenString = ""
     @State private var localError: String?
@@ -55,7 +55,7 @@ struct SettingsView: View {
                                     }
                                 } else {
                                 field("url") {
-                                    TextField("wss://your-gateway/oc", text: $url)
+                                    TextField("ws://192.168.1.20:18789 或 wss://your-gateway", text: $url)
                                         .textInputAutocapitalization(.never)
                                         .autocorrectionDisabled()
                                         .keyboardType(.URL)
@@ -63,12 +63,18 @@ struct SettingsView: View {
                                         .foregroundStyle(Theme.ink)
                                 }
                                 }
-                                field("token") {
-                                    SecureField("Gateway token", text: $token)
-                                        .textInputAutocapitalization(.never)
-                                        .autocorrectionDisabled()
-                                        .font(Theme.ui(15))
-                                        .foregroundStyle(Theme.ink)
+                                if mode == "direct" {
+                                    Text(L("填你自己 gateway 的位址；沒有網域或公網 IP，請用上面的 XOIO Relay。"))
+                                        .font(Theme.ui(11))
+                                        .foregroundStyle(Theme.muted)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                    field("token") {
+                                        SecureField("Gateway token", text: $token)
+                                            .textInputAutocapitalization(.never)
+                                            .autocorrectionDisabled()
+                                            .font(Theme.ui(15))
+                                            .foregroundStyle(Theme.ink)
+                                    }
                                 }
                                 if let e = localError {
                                     Text(e).font(Theme.ui(12)).foregroundStyle(Theme.warn)
@@ -258,7 +264,7 @@ struct SettingsView: View {
             return
         }
         guard let normalized = normalize(url) else {
-            localError = L("網址格式不對（例:wss://xoio.io/oc）")
+            localError = L("網址格式不對（例：ws://192.168.1.20:18789）")
             return
         }
         let tk = token.trimmingCharacters(in: .whitespacesAndNewlines)

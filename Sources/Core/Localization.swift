@@ -34,7 +34,7 @@ private let EN: [String: String] = [
     "只顯示在這支 App(App 裡的名字),不會改到 gateway 帳號": "Shown only in this app; does not change your gateway account",
     "手動連線": "Manual connection", "自己的網址": "My URL", "貼上 Relay 配對碼": "Paste relay code",
     "Relay 配對碼無法解析": "Cannot parse the relay code", "請貼上 Relay 配對碼": "Paste a relay code", "Gateway token": "Gateway token",
-    "網址格式不對（例:wss://xoio.io/oc）": "Invalid URL (e.g. wss://xoio.io/oc)",
+    "網址格式不對（例：ws://192.168.1.20:18789）": "Invalid URL (e.g. ws://192.168.1.20:18789)",
     "請貼上 Gateway token": "Please paste a gateway token",
     "隱私政策": "Privacy Policy", "版本": "Version",
     "中斷連線（保留配對）": "Disconnect (keep pairing)",
@@ -116,6 +116,8 @@ private let EN: [String: String] = [
     "清除本機紀錄": "Clear local history",
     // 支援信箱 / 連線取回
     "有問題或需要協助，歡迎寫信給我們。": "Questions or need help? Email us anytime.",
+    "填你自己 gateway 的位址；沒有網域或公網 IP，請用上面的 XOIO Relay。":
+        "Enter your own gateway address. If you have no domain or public IP, use XOIO Relay above.",
     "取不回原本的連線，請稍後再試": "Couldn't restore your previous connection — please try again.",
     "裝置簽章失敗": "Device signing failed.",
     "Relay 回應格式錯誤": "Unexpected response from relay.",
