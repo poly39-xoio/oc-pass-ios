@@ -134,11 +134,13 @@ struct SettingsView: View {
                 SheetHeader(title: L("設定"), onDone: { dismiss() }) {
                     LanguagePill {
                         model.setLanguage(Language.isEnglish ? "zh" : "en")
-                        dismiss()   // 關閉後重開,確保每個畫面都用新語言
+                        dismiss()
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+                            model.bumpLanguageRevision()
+                        }
                     }
                 }
             }
-            .navigationTitle(L("設定"))
             .navigationBarTitleDisplayMode(.inline)
             .onChange(of: model.state) { _, newValue in
                 if case .ready = newValue { dismiss() }

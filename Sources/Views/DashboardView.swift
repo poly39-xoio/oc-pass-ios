@@ -28,7 +28,6 @@ struct DashboardView: View {
             .safeAreaInset(edge: .top) {
                 SheetHeader(title: L("控制台"), onDone: { dismiss() })
             }
-            .navigationTitle("控制台")
             .navigationBarTitleDisplayMode(.inline)
             .task { await model.loadDashboard() }
             .confirmationDialog("撤銷這台裝置？", isPresented: Binding(

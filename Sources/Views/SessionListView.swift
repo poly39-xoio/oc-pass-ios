@@ -59,7 +59,6 @@ struct SessionListView: View {
             .safeAreaInset(edge: .top) {
                 SheetHeader(title: L("工作階段"), onDone: { dismiss() })
             }
-            .navigationTitle("工作階段")
             .navigationBarTitleDisplayMode(.inline)
         }
     }

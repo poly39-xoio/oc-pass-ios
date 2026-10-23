@@ -20,7 +20,8 @@ struct ChatView: View {
     private var draftKey: String { "ocpass.draft." + (model.currentSession?.id ?? "none") }
 
     var body: some View {
-        ZStack {
+        let _ = model.languageRevision
+        return ZStack {
             Theme.background
             VStack(spacing: 0) {
                 header

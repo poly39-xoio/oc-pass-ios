@@ -31,7 +31,7 @@ final class AppModel: ObservableObject {
     @Published var sessionError: String?
     @Published var gatewayVersion: String = ""
     /// 使用者自己設定的名字(存在 UserDefaults),用來顯示「你是誰」而不是 Telegram 帳號
-    @Published var language: String = Language.current
+    @Published var languageRevision = 0
     @Published var userName: String = UserDefaults.standard.string(forKey: "ocpass.userName") ?? ""
 
     var displayName: String {
@@ -40,9 +40,13 @@ final class AppModel: ObservableObject {
         return currentSession?.title ?? "OC Pass"
     }
 
+    /// 只寫入設定,不在同一次更新中改動畫面狀態(避免 SwiftUI view graph 崩潰)
     func setLanguage(_ value: String) {
-        language = value
         Language.current = value
+    }
+
+    func bumpLanguageRevision() {
+        languageRevision += 1
     }
 
     func setUserName(_ value: String) {
