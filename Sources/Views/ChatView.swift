@@ -411,6 +411,11 @@ struct MessageBubble: View {
                         .textSelection(.enabled)
                         .contextMenu {
                             Button {
+                                UIPasteboard.general.string = visibleText
+                            } label: {
+                                Label(L("複製"), systemImage: "doc.on.doc")
+                            }
+                            Button {
                                 shareItems = [visibleText]
                                 showShare = true
                             } label: {
