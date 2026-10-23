@@ -48,10 +48,14 @@ struct ChatView: View {
         }
     }
 
+    /// 滾到底:不帶動畫、分幾個時點重試。
+    /// 送出訊息時輸入框高度/附件列會變動,只用一次動畫滾動容易停在內容外→整頁空白。
     private func scrollToBottom(_ proxy: ScrollViewProxy, delay: Double, anchor: String = "bottom-anchor") {
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-            withAnimation(.easeOut(duration: 0.2)) {
-                proxy.scrollTo(anchor, anchor: .bottom)
+        for extra in [0.0, 0.08, 0.18, 0.34] {
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay + extra) {
+                var t = Transaction()
+                t.disablesAnimations = true
+                withTransaction(t) { proxy.scrollTo(anchor, anchor: .bottom) }
             }
         }
     }
@@ -177,6 +181,9 @@ struct ChatView: View {
             }
             .onChange(of: model.messages.count) { _, _ in scrollToBottom(proxy, delay: 0.05) }
             .onChange(of: model.messages.last?.id) { _, _ in scrollToBottom(proxy, delay: 0.05) }
+            .onChange(of: inputHeight) { _, _ in scrollToBottom(proxy, delay: 0.02) }
+            .onChange(of: model.streaming) { _, _ in scrollToBottom(proxy, delay: 0.02) }
+            .onChange(of: pending.isEmpty) { _, _ in scrollToBottom(proxy, delay: 0.02) }
             .onChange(of: model.awaitingReply) { _, typing in
                 if typing { scrollToBottom(proxy, delay: 0.05, anchor: "typing-indicator") }
             }
