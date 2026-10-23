@@ -8,6 +8,7 @@ const ISSUER = process.env.ASC_ISSUER_ID;
 const KEY_PATH = process.env.ASC_KEY_PATH;
 const APP_ID = process.env.APP_ID;
 const GROUP_ID = process.env.BETA_GROUP_ID;
+const EXPECTED = (process.env.EXPECTED_BUILD || '').trim(); // 這次要掛的 build 號
 
 if (!KEY_ID || !ISSUER || !KEY_PATH || !APP_ID || !GROUP_ID) {
   console.error('missing env');
@@ -43,17 +44,20 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 (async () => {
   let build = null;
-  for (let i = 0; i < 30; i++) {
-    const { status, json } = await api(`/v1/apps/${APP_ID}/builds?limit=10`);
+  for (let i = 0; i < 60; i++) {
+    const { status, json } = await api(`/v1/builds?filter%5Bapp%5D=${APP_ID}&limit=20&sort=-uploadedDate`);
     if (status !== 200) { console.log('list failed', status, JSON.stringify(json).slice(0, 200)); }
-    const list = (json.data || []).slice().sort((a, b) => String(b.attributes.uploadedDate || '').localeCompare(String(a.attributes.uploadedDate || '')));
-    const first = list[0];
-    if (first) {
-      const state = first.attributes.processingState;
-      console.log('latest build', first.attributes.version, state);
-      if (state === 'VALID') { build = first; break; }
+    const list = json.data || [];
+    // 只認這一次上傳的 build 號(EXPECTED_BUILD)，避免掛到舊 build
+    const cand = EXPECTED ? list.find((b) => String(b.attributes.version) === EXPECTED) : list[0];
+    if (cand) {
+      const state = cand.attributes.processingState;
+      console.log('target build', cand.attributes.version, state);
+      if (state === 'VALID') { build = cand; break; }
+    } else {
+      console.log('waiting for build', EXPECTED || '(newest)', 'to appear...');
     }
-    await sleep(20000);
+    await sleep(15000);
   }
   if (!build) { console.error('no VALID build found'); process.exit(1); }
 

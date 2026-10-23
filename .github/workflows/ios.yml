@@ -138,6 +138,7 @@ jobs:
           ASC_KEY_PATH: ${{ github.workspace }}/../private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8
           APP_ID: "6825438357"
           BETA_GROUP_ID: "2ac827eb-5fc8-4466-8568-e3f7ccd3756f"
+          EXPECTED_BUILD: "${{ github.run_number }}"
         run: |
           export ASC_KEY_PATH="$HOME/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8"
           node scripts/attach_beta_group.mjs
