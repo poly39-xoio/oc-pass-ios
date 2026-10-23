@@ -133,10 +133,15 @@ struct ChatView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 10) {
                     ForEach(model.messages.filter { !$0.isHidden }) { m in
-                        MessageBubble(message: m) { items in
-                            rootShareItems = items
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { showRootShare = true }
-                        }
+                        MessageBubble(
+                            message: m,
+                            onShare: { items in
+                                rootShareItems = items
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { showRootShare = true }
+                            },
+                            onDelete: { model.deleteMessage(m) },
+                            onDeleteAttachment: { model.deleteAttachment(of: m) }
+                        )
                         .id(m.id)
                     }
                     if model.awaitingReply {
@@ -391,6 +396,8 @@ struct TypingBubble: View {
 struct MessageBubble: View {
     let message: ChatMessage
     var onShare: ([Any]) -> Void = { _ in }
+    var onDelete: () -> Void = {}
+    var onDeleteAttachment: () -> Void = {}
     @State private var previewURL: URL?
 
     var body: some View {
@@ -414,6 +421,9 @@ struct MessageBubble: View {
                             } label: {
                                 Label(L("分享"), systemImage: "square.and.arrow.up")
                             }
+                            Button(role: .destructive) { onDelete() } label: {
+                                Label(L("刪除照片"), systemImage: "trash")
+                            }
                         }
                 }
                 if let path = message.attachmentPath, FileManager.default.fileExists(atPath: path) {
@@ -433,6 +443,9 @@ struct MessageBubble: View {
                                 onShare([visibleText])
                             } label: {
                                 Label(L("分享文字"), systemImage: "square.and.arrow.up")
+                            }
+                            Button(role: .destructive) { onDelete() } label: {
+                                Label(L("刪除訊息"), systemImage: "trash")
                             }
                         }
                 }
@@ -481,6 +494,9 @@ struct MessageBubble: View {
                 Label(L("分享"), systemImage: "square.and.arrow.up")
             }
             Button { previewURL = url } label: { Label(L("快速查看"), systemImage: "eye") }
+            Button(role: .destructive) { onDeleteAttachment() } label: {
+                Label(L("刪除檔案"), systemImage: "trash")
+            }
         }
         .quickLookPreview($previewURL)
     }

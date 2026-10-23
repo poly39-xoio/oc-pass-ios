@@ -32,6 +32,8 @@ final class AppModel: ObservableObject {
     @Published var trialExpiresAt: Date?
     @Published var trialError: String?
     @Published var trialLoading = false
+    /// 已在本機刪除的訊息(用 role|text 當 key,避免歷史刷新又回來)
+    @Published var hiddenKeys: Set<String> = Set(UserDefaults.standard.stringArray(forKey: "ocpass.hiddenKeys") ?? [])
     @Published var sessionError: String?
     @Published var gatewayVersion: String = ""
     @Published var versionWarning: String?
@@ -326,6 +328,40 @@ final class AppModel: ObservableObject {
     }
 
     /// Telegram 風格:一段回覆裡只留最後一個助理訊息(中間的工具/旁白不顯示)
+    private func messageKey(_ m: ChatMessage) -> String {
+        m.role.rawValue + "|" + String(m.text.prefix(80))
+    }
+
+    private func saveHidden() {
+        UserDefaults.standard.set(Array(hiddenKeys), forKey: "ocpass.hiddenKeys")
+    }
+
+    /// 刪除單則訊息(本機):文字、圖片、檔案一起處理
+    func deleteMessage(_ m: ChatMessage) {
+        hiddenKeys.insert(messageKey(m))
+        saveHidden()
+        if let p = m.attachmentPath { try? FileManager.default.removeItem(atPath: p) }
+        messages.removeAll { $0.id == m.id }
+        saveTranscript()
+    }
+
+    /// 清除本機會話紀錄(不動 gateway)
+    func clearLocalConversation(_ session: GatewaySession) {
+        TranscriptCache.clear(for: session.id)
+        if currentSession?.id == session.id { messages = [] }
+    }
+
+    /// 只刪附件(保留文字)
+    func deleteAttachment(of m: ChatMessage) {
+        if let p = m.attachmentPath { try? FileManager.default.removeItem(atPath: p) }
+        if let i = messages.firstIndex(where: { $0.id == m.id }) {
+            messages[i].attachmentPath = nil
+            messages[i].attachmentName = nil
+            messages[i].imageData = nil
+        }
+        saveTranscript()
+    }
+
     private func collapsed(_ list: [ChatMessage]) -> [ChatMessage] {
         var out: [ChatMessage] = []
         var buffer: [ChatMessage] = []
@@ -334,6 +370,7 @@ final class AppModel: ObservableObject {
             buffer = []
         }
         for m in list {
+            if hiddenKeys.contains(messageKey(m)) { continue }
             if m.isHidden {
                 // 工具產物:前面的助理訊息是「中間過程」→ 丟掉,不讓它變成最終答案
                 buffer = []
