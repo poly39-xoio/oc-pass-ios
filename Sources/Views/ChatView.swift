@@ -14,8 +14,6 @@ struct ChatView: View {
     @State private var showPhotoPicker = false
     @State private var showFileImporter = false
     @State private var photoItem: PhotosPickerItem?
-    @State private var rootShareItems: [Any] = []
-    @State private var showRootShare = false
     @State private var sizeWarning: String?
     @StateObject private var speech = SpeechInput()
     @State private var dictationBase = ""
@@ -35,9 +33,6 @@ struct ChatView: View {
                 inputBar
                 bottomBar
             }
-        }
-        .sheet(isPresented: $showRootShare) {
-            ShareSheet(items: rootShareItems)
         }
         .alert(L("太大"), isPresented: Binding(get: { sizeWarning != nil || speech.error != nil }, set: { if !$0 { sizeWarning = nil; speech.error = nil } })) {
             Button(L("完成")) { sizeWarning = nil }
@@ -77,6 +72,25 @@ struct ChatView: View {
             UserDefaults.standard.set(value, forKey: draftKey)
             UserDefaults.standard.set(value, forKey: "ocpass.draft.last")
         }
+    }
+
+    /// 直接從最上層 VC 呈現分享面板(避免包在 SwiftUI .sheet 裡偶發空白頁)
+    private func presentShare(_ items: [Any]) {
+        guard !items.isEmpty else { return }
+        guard let scene = UIApplication.shared.connectedScenes
+            .compactMap({ $0 as? UIWindowScene })
+            .first,
+            let window = scene.windows.first(where: { $0.isKeyWindow }),
+            let root = window.rootViewController else { return }
+        var top = root
+        while let presented = top.presentedViewController { top = presented }
+        let avc = UIActivityViewController(activityItems: items, applicationActivities: nil)
+        if let pop = avc.popoverPresentationController {
+            pop.sourceView = top.view
+            pop.sourceRect = CGRect(x: top.view.bounds.midX, y: top.view.bounds.midY, width: 1, height: 1)
+            pop.permittedArrowDirections = []
+        }
+        top.present(avc, animated: true)
     }
 
     // MARK: - Header
@@ -136,8 +150,7 @@ struct ChatView: View {
                         MessageBubble(
                             message: m,
                             onShare: { items in
-                                rootShareItems = items
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { showRootShare = true }
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { presentShare(items) }
                             },
                             onDelete: { model.deleteMessage(m) },
                             onDeleteAttachment: { model.deleteAttachment(of: m) }
@@ -177,7 +190,6 @@ struct ChatView: View {
         if !pending.isEmpty {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
-                    Spacer(minLength: 0)
                     ForEach(pending) { a in
                         HStack(spacing: 6) {
                             Image(systemName: a.isImage ? "photo" : "doc")
@@ -201,6 +213,7 @@ struct ChatView: View {
                     }
                 }
                 .padding(.horizontal, 12)
+                .frame(minWidth: UIScreen.main.bounds.width, alignment: .trailing)
             }
             .padding(.bottom, 6)
         }
