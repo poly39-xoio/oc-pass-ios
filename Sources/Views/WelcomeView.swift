@@ -96,12 +96,13 @@ struct WelcomeView: View {
                 model.setLanguage(Language.isEnglish ? "zh" : "en")
             } label: {
                 Text(Language.isEnglish ? "中文" : "EN")
-                    .font(Theme.ui(12, .bold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 7)
-                    .background(Theme.panel)
+                    .font(Theme.ui(13, .black))
+                    .foregroundStyle(Theme.bg)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .background(Theme.accent)
                     .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .shadow(color: .black.opacity(0.35), radius: 6, y: 3)
             }
             .padding(.top, 52)
             .padding(.trailing, 16)

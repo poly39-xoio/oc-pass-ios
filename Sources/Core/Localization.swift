@@ -126,6 +126,18 @@ private let EN: [String: String] = [
     "自己填位址與 token（進階）": "Enter URL and token yourself (advanced)",
     "不用連線，先看看介面": "No connection needed — take a look",
     "退出": "Exit",
+    // Demo(模式內文字也要跟著語系)
+    "這是 Demo 模式：不需要連接 gateway 也能操作。\n\n連上你自己的 OpenClaw 後，這裡會顯示真實對話。":
+        "Demo mode: explore without connecting a gateway.\n\nOnce you connect your own OpenClaw, real conversations appear here.",
+    "你可以幫我做什麼?": "What can you do for me?",
+    "我可以幫你整理檔案、跑指令、查資料、設定排程，也可以操作你的電腦。實際能力取決於你在 gateway 開放的權限。":
+        "I can organise files, run commands, look things up, schedule tasks and operate your computer — within the permissions you grant in your gateway.",
+    "（Demo 模式）這是示範回覆：連上你自己的 OpenClaw 後，這裡會是你真正的答案。實際能力取決於你在 gateway 開放的權限。":
+        "(Demo) This is a sample reply. After you connect your own OpenClaw this is where the real answer appears; capabilities depend on the permissions you grant.",
+    "（Demo 模式）嗨！這是不連線的示範。按右上「退出」或回首頁，就能換成連你自己的 gateway。":
+        "(Demo) Hi! This is an offline demo. Tap “Exit” at the top right, or go back to the entry screen, to connect your own gateway.",
+    "（Demo 模式）收到：「%@」。真正的回覆要連上你的 gateway 才會出現。":
+        "(Demo) Received: “%@”. Real replies require your gateway."
     "取不回原本的連線，請稍後再試": "Couldn't restore your previous connection — please try again.",
     "裝置簽章失敗": "Device signing failed.",
     "Relay 回應格式錯誤": "Unexpected response from relay.",

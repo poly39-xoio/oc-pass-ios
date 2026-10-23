@@ -888,6 +888,6 @@ final class AppModel: ObservableObject {
         state = .ready
         sessions = [GatewaySession(id: "demo", sessionId: "demo", title: "Demo session", updatedAt: Date(), unread: 0, totalTokens: 0, hasActiveRun: false, activeRunIds: [], model: nil)]
         currentSession = sessions.first
-        messages = DemoData.messages
+        messages = DemoData.messages()
     }
 }
