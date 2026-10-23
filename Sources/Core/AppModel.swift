@@ -554,7 +554,12 @@ final class AppModel: ObservableObject {
                 actionError = nil
                 await loadDashboard()
             } catch {
-                actionError = "切換模型失敗:" + error.localizedDescription
+                let msg = error.localizedDescription
+                actionError = "切換模型失敗:" + msg
+                // 這個模型不被允許 → 從清單移除,避免再選到
+                if msg.lowercased().contains("not allowed") {
+                    availableModels.removeAll { $0 == model || model.hasSuffix($0) || $0.hasSuffix(model) }
+                }
             }
         }
     }
