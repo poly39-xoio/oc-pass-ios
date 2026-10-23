@@ -149,7 +149,7 @@ struct ChatView: View {
     private var messageList: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 10) {
+                VStack(alignment: .leading, spacing: 10) {
                     ForEach(model.messages.filter { !$0.isHidden }) { m in
                         MessageBubble(
                             message: m,

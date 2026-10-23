@@ -679,7 +679,7 @@ final class AppModel: ObservableObject {
 
     // MARK: - Relay trial
 
-    /// 免費試用 1 天:向 relay 申請 24 小時通道,拿到安裝指令
+    /// 免費試用 3 天:向 relay 申請 72 小時通道,拿到安裝指令
     func startTrial() {
         guard !trialLoading else { return }
         trialLoading = true
