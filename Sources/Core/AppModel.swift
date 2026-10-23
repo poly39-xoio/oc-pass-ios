@@ -28,6 +28,10 @@ final class AppModel: ObservableObject {
     @Published var pairedDevices: [PairedDevice] = []
     @Published var availableModels: [String] = []
     @Published var actionError: String?
+    @Published var trialCommand: String?
+    @Published var trialExpiresAt: Date?
+    @Published var trialError: String?
+    @Published var trialLoading = false
     @Published var sessionError: String?
     @Published var gatewayVersion: String = ""
     /// 使用者自己設定的名字(存在 UserDefaults),用來顯示「你是誰」而不是 Telegram 帳號
@@ -586,6 +590,45 @@ final class AppModel: ObservableObject {
     }
 
     var totalTokens: Int { sessions.reduce(0) { $0 + $1.totalTokens } }
+
+    // MARK: - Relay trial
+
+    /// 免費試用 1 天:向 relay 申請 24 小時通道,拿到安裝指令
+    func startTrial() {
+        guard !trialLoading else { return }
+        trialLoading = true
+        trialError = nil
+        guard let url = URL(string: "https://xoio.io/relay/trial") else { trialLoading = false; return }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        let deviceId = DeviceIdentity.loadOrCreate().deviceId
+        req.httpBody = try? JSONSerialization.data(withJSONObject: ["deviceId": deviceId])
+        URLSession.shared.dataTask(with: req) { data, resp, err in
+            defer { DispatchQueue.main.async { self.trialLoading = false } }
+            if let err { DispatchQueue.main.async { self.trialError = err.localizedDescription }; return }
+            guard let data,
+                  let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+                DispatchQueue.main.async { self.trialError = "Relay 回應格式錯誤" }; return
+            }
+            if let e = obj["error"] as? String {
+                DispatchQueue.main.async {
+                    self.trialError = (e == "trial already used") ? "這台裝置已用過免費試用" : e
+                }
+                return
+            }
+            guard let id = obj["id"] as? String, let secret = obj["secret"] as? String else {
+                DispatchQueue.main.async { self.trialError = "Relay 沒有回傳通道資訊" }; return
+            }
+            let cmd = "curl -fsSL https://xoio.io/relay-install/install.sh | bash -s -- \(id)?k=\(secret)"
+            DispatchQueue.main.async {
+                self.trialCommand = cmd
+                if let s = obj["expiresAt"] as? String {
+                    let f = ISO8601DateFormatter(); self.trialExpiresAt = f.date(from: s)
+                }
+            }
+        }.resume()
+    }
 
     // MARK: - Dashboard actions
 

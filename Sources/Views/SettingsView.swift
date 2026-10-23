@@ -11,6 +11,7 @@ struct SettingsView: View {
     @State private var showHelp = false
     @State private var mode = "direct"
     @State private var relayCode = ""
+    @State private var showTrial = false
 
     var body: some View {
         let _ = model.languageRevision
@@ -85,6 +86,19 @@ struct SettingsView: View {
                                     .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                                 }
                                 .disabled(isBusy)
+                            }
+                        }
+
+                        section("XOIO Relay") {
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text(L("不用網域、不用開 port，出門也能連。先免費試用 1 天。"))
+                                    .font(Theme.ui(12)).foregroundStyle(Theme.ink)
+                                Button(L("免費試用 1 天")) { showTrial = true }
+                                    .font(Theme.ui(15, .bold))
+                                    .foregroundStyle(.white)
+                                    .frame(maxWidth: .infinity, minHeight: 46)
+                                    .background(Theme.accent)
+                                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                             }
                         }
 
@@ -170,6 +184,7 @@ struct SettingsView: View {
                 if case .ready = newValue { dismiss() }
             }
             .onAppear { name = model.userName }
+            .sheet(isPresented: $showTrial) { RelayTrialView().environmentObject(model) }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar(.hidden, for: .navigationBar)
             .toolbar {
