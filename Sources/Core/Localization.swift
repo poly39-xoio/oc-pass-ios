@@ -137,7 +137,7 @@ private let EN: [String: String] = [
     "（Demo 模式）嗨！這是不連線的示範。按右上「退出」或回首頁，就能換成連你自己的 gateway。":
         "(Demo) Hi! This is an offline demo. Tap “Exit” at the top right, or go back to the entry screen, to connect your own gateway.",
     "（Demo 模式）收到：「%@」。真正的回覆要連上你的 gateway 才會出現。":
-        "(Demo) Received: “%@”. Real replies require your gateway."
+        "(Demo) Received: “%@”. Real replies require your gateway.",
     "取不回原本的連線，請稍後再試": "Couldn't restore your previous connection — please try again.",
     "裝置簽章失敗": "Device signing failed.",
     "Relay 回應格式錯誤": "Unexpected response from relay.",
