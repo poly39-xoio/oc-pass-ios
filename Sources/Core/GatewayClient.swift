@@ -280,7 +280,7 @@ final class GatewayClient {
     }
 
     func cronRun(jobId: String) async throws {
-        _ = try await request("cron.run", ["jobId": jobId, "runMode": "force"])
+        _ = try await request("cron.run", ["id": jobId, "mode": "force"])
     }
 
     func nodes() async throws -> [GatewayNode] {

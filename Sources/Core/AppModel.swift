@@ -516,8 +516,13 @@ final class AppModel: ObservableObject {
 
     func runJob(_ job: GatewayCronJob) {
         Task {
-            try? await client.cronRun(jobId: job.id)
-            await loadDashboard()
+            do {
+                try await client.cronRun(jobId: job.id)
+                actionError = nil
+                await loadDashboard()
+            } catch {
+                actionError = "執行任務失敗:" + error.localizedDescription
+            }
         }
     }
 

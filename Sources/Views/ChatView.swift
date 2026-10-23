@@ -371,6 +371,18 @@ struct MessageBubble: View {
                         .scaledToFit()
                         .frame(maxWidth: 220, maxHeight: 260)
                         .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .contextMenu {
+                            Button {
+                                UIPasteboard.general.image = ui
+                            } label: {
+                                Label(L("複製圖片"), systemImage: "doc.on.doc")
+                            }
+                            if let url = MessageBubble.tempImageURL(data) {
+                                ShareLink(item: url) {
+                                    Label(L("分享"), systemImage: "square.and.arrow.up")
+                                }
+                            }
+                        }
                 }
                 if !visibleText.isEmpty {
                     Text(visibleText)
@@ -385,6 +397,16 @@ struct MessageBubble: View {
             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             if message.role != .user { Spacer(minLength: 40) }
         }
+    }
+
+    static func tempImageURL(_ data: Data) -> URL? {
+        let dir = FileManager.default.temporaryDirectory
+        let name = "ocpass-" + String(data.hashValue) + ".jpg"
+        let url = dir.appendingPathComponent(name)
+        if !FileManager.default.fileExists(atPath: url.path) {
+            try? data.write(to: url)
+        }
+        return url
     }
 
     /// 隱藏 gateway 留下的媒體標記
