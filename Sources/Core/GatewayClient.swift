@@ -320,17 +320,35 @@ final class GatewayClient {
     }
 
     func availableModels() async throws -> [String] {
+        // 先試 config 的允許清單(最準)
+        if let cfgPayload = try? await request("config.get", [:]),
+           let dict = cfgPayload as? [String: Any],
+           let cfg = (dict["config"] as? [String: Any]) ?? (dict["value"] as? [String: Any]),
+           let agents = cfg["agents"] as? [String: Any],
+           let defaults = agents["defaults"] as? [String: Any],
+           let models = defaults["models"] as? [String: Any], !models.isEmpty {
+            return models.keys.sorted()
+        }
         let payload = try await request("models.list", [:])
         let dict = payload as? [String: Any] ?? [:]
         if let list = dict["models"] as? [[String: Any]] {
-            return list.compactMap { m in
-                if let id = m["id"] as? String { return id }
-                if let p = m["provider"] as? String, let id = m["model"] as? String { return p + "/" + id }
-                return nil
+            return list.compactMap { m -> String? in
+                let id: String?
+                if let direct = m["id"] as? String { id = direct }
+                else if let p = m["provider"] as? String, let mid = m["model"] as? String { id = p + "/" + mid }
+                else { id = nil }
+                guard let id, !Self.bannedModel(id) else { return nil }
+                return id
             }
         }
-        if let list = dict["models"] as? [String] { return list }
+        if let list = dict["models"] as? [String] { return list.filter { !Self.bannedModel($0) } }
         return []
+    }
+
+    /// 已知被下架/不允許的模型,不要列出來
+    static func bannedModel(_ id: String) -> Bool {
+        let low = id.lowercased()
+        return low.contains("qwen3-vl-32b") || low.contains("qwen3 vl 32b")
     }
 
     func patchSessionModel(sessionKey: String, model: String) async throws {

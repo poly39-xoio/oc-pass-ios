@@ -132,7 +132,10 @@ struct SettingsView: View {
             }
             .safeAreaInset(edge: .top) {
                 SheetHeader(title: L("設定"), onDone: { dismiss() }) {
-                    LanguagePill { model.setLanguage(Language.isEnglish ? "zh" : "en") }
+                    LanguagePill {
+                        model.setLanguage(Language.isEnglish ? "zh" : "en")
+                        dismiss()   // 關閉後重開,確保每個畫面都用新語言
+                    }
                 }
             }
             .navigationTitle(L("設定"))
