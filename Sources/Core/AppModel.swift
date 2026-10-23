@@ -29,6 +29,11 @@ final class AppModel: ObservableObject {
     @Published var availableModels: [String] = []
     @Published var actionError: String?
     @Published var trialCommand: String?
+    /// 這次試用的通道資訊（用來跟 relay 要配對碼，達成「不用掃 QR 自動連上」）
+    @Published var trialChannel: String?
+    @Published var trialSecret: String?
+    @Published var relayConnected = false
+    private var trialWatch: Task<Void, Never>?
     @Published var trialExpiresAt: Date?
     @Published var trialError: String?
     @Published var trialLoading = false
@@ -704,11 +709,42 @@ final class AppModel: ObservableObject {
             let cmd = "curl -fsSL https://xoio.io/relay-install/install.sh | bash -s -- \(id)?k=\(secret)"
             DispatchQueue.main.async {
                 self.trialCommand = cmd
+                self.trialChannel = id
+                self.trialSecret = secret
                 if let s = obj["expiresAt"] as? String {
                     let f = ISO8601DateFormatter(); self.trialExpiresAt = f.date(from: s)
                 }
+                self.startTrialWatch()
             }
         }.resume()
+    }
+
+    /// 電腦端安裝完會把配對碼放到 relay（只在記憶體）；這裡輪詢領取後自動連上
+    func startTrialWatch() {
+        trialWatch?.cancel()
+        guard let ch = trialChannel, let sec = trialSecret else { return }
+        trialWatch = Task { [weak self] in
+            guard let self else { return }
+            for _ in 0..<150 {                 // 最多約 5 分鐘
+                if Task.isCancelled { return }
+                if let code = await Self.fetchPairCode(channel: ch, secret: sec) {
+                    await MainActor.run {
+                        self.relayConnected = true
+                        self.connectRelay(code: code)
+                    }
+                    return
+                }
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+            }
+        }
+    }
+
+    static func fetchPairCode(channel: String, secret: String) async -> String? {
+        guard let url = URL(string: "https://xoio.io/relay/pair/\(channel)?k=\(secret)") else { return nil }
+        guard let (data, resp) = try? await URLSession.shared.data(from: url),
+              (resp as? HTTPURLResponse)?.statusCode == 200,
+              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
+        return obj["code"] as? String
     }
 
     // MARK: - Dashboard actions
