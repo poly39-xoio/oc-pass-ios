@@ -47,6 +47,13 @@ struct SessionListView: View {
                                 .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                             }
                             .buttonStyle(.plain)
+                            .contextMenu {
+                                Button(role: .destructive) {
+                                    model.clearLocalConversation(s)
+                                } label: {
+                                    Label(L("清除本機紀錄"), systemImage: "trash")
+                                }
+                            }
                         }
                     }
                     .padding(16)
