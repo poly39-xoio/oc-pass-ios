@@ -116,6 +116,10 @@ private let EN: [String: String] = [
     "清除本機紀錄": "Clear local history",
     // 支援信箱 / 連線取回
     "有問題或需要協助，歡迎寫信給我們。": "Questions or need help? Email us anytime.",
+    "進階：手動貼上配對碼": "Advanced: paste pairing code manually",
+    "用手動配對碼連線": "Connect with pairing code",
+    "只有自動連線失敗時才需要：在電腦執行 cat ~/.oc-tunnel/pair-code.txt，把整串貼進來。":
+        "Only needed when auto-connect fails: on your computer run cat ~/.oc-tunnel/pair-code.txt and paste the whole string here.",
     "填你自己 gateway 的位址；沒有網域或公網 IP，請用上面的 XOIO Relay。":
         "Enter your own gateway address. If you have no domain or public IP, use XOIO Relay above.",
     "取不回原本的連線，請稍後再試": "Couldn't restore your previous connection — please try again.",

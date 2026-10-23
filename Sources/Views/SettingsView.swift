@@ -39,21 +39,6 @@ struct SettingsView: View {
 
                         section(L("手動連線")) {
                             VStack(spacing: 10) {
-                                Picker("", selection: $mode) {
-                                    Text(L("自己的網址")).tag("direct")
-                                    Text("XOIO Relay").tag("relay")
-                                }
-                                .pickerStyle(.segmented)
-
-                                if mode == "relay" {
-                                    field("relay") {
-                                        TextField(L("貼上 Relay 配對碼"), text: $relayCode)
-                                            .textInputAutocapitalization(.never)
-                                            .autocorrectionDisabled()
-                                            .font(Theme.ui(14))
-                                            .foregroundStyle(Theme.ink)
-                                    }
-                                } else {
                                 field("url") {
                                     TextField("ws://host:18789  ·  wss://your-gateway", text: $url)
                                         .textInputAutocapitalization(.never)
@@ -61,7 +46,6 @@ struct SettingsView: View {
                                         .keyboardType(.URL)
                                         .font(Theme.ui(15))
                                         .foregroundStyle(Theme.ink)
-                                }
                                 }
                                 if mode == "direct" {
                                     Text(L("填你自己 gateway 的位址；沒有網域或公網 IP，請用上面的 XOIO Relay。"))
@@ -106,6 +90,33 @@ struct SettingsView: View {
                                     .frame(maxWidth: .infinity, minHeight: 46)
                                     .background(Theme.accent)
                                     .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                                DisclosureGroup {
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        Text(L("只有自動連線失敗時才需要：在電腦執行 cat ~/.oc-tunnel/pair-code.txt，把整串貼進來。"))
+                                            .font(Theme.ui(11))
+                                            .foregroundStyle(Theme.muted)
+                                        field("relay") {
+                                            TextField(L("貼上 Relay 配對碼"), text: $relayCode)
+                                                .textInputAutocapitalization(.never)
+                                                .autocorrectionDisabled()
+                                                .font(Theme.ui(13))
+                                                .foregroundStyle(Theme.ink)
+                                        }
+                                        Button(L("用手動配對碼連線")) {
+                                            let code = relayCode.trimmingCharacters(in: .whitespacesAndNewlines)
+                                            guard !code.isEmpty else { localError = L("請貼上 Relay 配對碼"); return }
+                                            model.connectRelay(code: code, token: "")
+                                        }
+                                        .font(Theme.ui(13, .semibold))
+                                        .foregroundStyle(Theme.ink)
+                                    }
+                                    .padding(.top, 6)
+                                } label: {
+                                    Text(L("進階：手動貼上配對碼"))
+                                        .font(Theme.ui(12, .semibold))
+                                        .foregroundStyle(Theme.muted)
+                                }
+
                                 Button(L("訂閱 / 還原購買")) { showPaywall = true }
                                     .font(Theme.ui(14, .semibold))
                                     .foregroundStyle(Theme.ink)
