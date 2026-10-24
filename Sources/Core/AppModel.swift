@@ -612,6 +612,9 @@ final class AppModel: ObservableObject {
             if let path = Self.storeAttachment(file) {
                 userMessage.attachmentName = file.name
                 userMessage.attachmentPath = path
+                if let sid = currentSession?.id {
+                    ImageJournal.add(id: userMessage.id, session: sid, paths: [path], text: file.name, date: userMessage.createdAt)
+                }
             }
         }
         messages.append(userMessage)
