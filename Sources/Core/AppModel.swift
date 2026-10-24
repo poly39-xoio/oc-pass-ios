@@ -375,15 +375,18 @@ final class AppModel: ObservableObject {
         var locals = messages.filter { ($0.imageData != nil || $0.imageDatas != nil || $0.imagePaths != nil || $0.attachmentPath != nil) && $0.role == .user }
         guard !locals.isEmpty else { return list }
         var out = list
+        func isPlaceholder(_ t: String) -> Bool {
+            t.isEmpty || t.hasPrefix("[附件]") || t.contains("[media attached")
+        }
         for i in out.indices where out[i].role == .user {
-            if let j = locals.firstIndex(where: { !$0.text.isEmpty && $0.text == out[i].text }) {
+            if !isPlaceholder(out[i].text), let j = locals.firstIndex(where: { !isPlaceholder($0.text) && $0.text == out[i].text }) {
                 out[i].imageData = locals[j].imageData
                 out[i].imageDatas = locals[j].imageDatas
                 out[i].imagePaths = locals[j].imagePaths
                 out[i].attachmentPath = locals[j].attachmentPath
                 out[i].attachmentName = locals[j].attachmentName
                 locals.remove(at: j)
-            } else if out[i].text.isEmpty, !locals.isEmpty {
+            } else if isPlaceholder(out[i].text), !locals.isEmpty {
                 let saved = locals.removeFirst()
                 out[i].imageData = saved.imageData
                 out[i].imageDatas = saved.imageDatas
