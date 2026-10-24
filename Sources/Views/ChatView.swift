@@ -18,6 +18,7 @@ struct ChatView: View {
     @StateObject private var speech = SpeechInput()
     @State private var dictationBase = ""
     @State private var scrollTask: Task<Void, Never>?
+    @State private var zoomImage: UIImage?
 
     private var draftKey: String { "ocpass.draft." + (model.currentSession?.id ?? "none") }
 
@@ -34,6 +35,9 @@ struct ChatView: View {
                 inputBar
                 bottomBar
             }
+        }
+        .fullScreenCover(isPresented: Binding(get: { zoomImage != nil }, set: { if !$0 { zoomImage = nil } })) {
+            if let img = zoomImage { ZoomViewer(image: img) }
         }
         .alert(L("太大"), isPresented: Binding(get: { sizeWarning != nil || speech.error != nil }, set: { if !$0 { sizeWarning = nil; speech.error = nil } })) {
             Button(L("完成")) { sizeWarning = nil }
@@ -175,7 +179,8 @@ struct ChatView: View {
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { presentShare(items) }
                             },
                             onDelete: { model.deleteMessage(m) },
-                            onDeleteAttachment: { model.deleteAttachment(of: m) }
+                            onDeleteAttachment: { model.deleteAttachment(of: m) },
+                            onZoom: { zoomImage = $0 }
                         )
                         .id(m.id)
                     }
@@ -456,8 +461,8 @@ struct MessageBubble: View {
     var onShare: ([Any]) -> Void = { _ in }
     var onDelete: () -> Void = {}
     var onDeleteAttachment: () -> Void = {}
+    var onZoom: (UIImage) -> Void = { _ in }
     @State private var previewURL: URL?
-    @State private var zoomImage: UIImage?
 
     private var mediaOnly: Bool {
         let has = message.imageData != nil || (message.imageDatas?.isEmpty == false) || (message.imagePaths?.isEmpty == false)
@@ -466,11 +471,33 @@ struct MessageBubble: View {
         return has && placeholderOnly && message.attachmentPath == nil
     }
 
+    private static let imgCache: NSCache<NSString, UIImage> = {
+        let c = NSCache<NSString, UIImage>(); c.countLimit = 60; return c
+    }()
+
     static func images(for m: ChatMessage) -> [UIImage] {
-        if let ds = m.imageDatas, !ds.isEmpty { return ds.compactMap { UIImage(data: $0) } }
-        if let d = m.imageData, let ui = UIImage(data: d) { return [ui] }
-        if let ps = m.imagePaths { return ps.compactMap { UIImage(contentsOfFile: $0) } }
-        return []
+        var out: [UIImage] = []
+        if let ds = m.imageDatas, !ds.isEmpty {
+            for (i, d) in ds.enumerated() {
+                let key = "\(m.id)-d\(i)" as NSString
+                if let c = imgCache.object(forKey: key) { out.append(c); continue }
+                if let ui = UIImage(data: d) { imgCache.setObject(ui, forKey: key); out.append(ui) }
+            }
+            return out
+        }
+        if let d = m.imageData {
+            let key = "\(m.id)-single" as NSString
+            if let c = imgCache.object(forKey: key) { return [c] }
+            if let ui = UIImage(data: d) { imgCache.setObject(ui, forKey: key); return [ui] }
+        }
+        if let ps = m.imagePaths {
+            for (i, path) in ps.enumerated() {
+                let key = "\(m.id)-p\(i)" as NSString
+                if let c = imgCache.object(forKey: key) { out.append(c); continue }
+                if let ui = UIImage(contentsOfFile: path) { imgCache.setObject(ui, forKey: key); out.append(ui) }
+            }
+        }
+        return out
     }
 
     var body: some View {
@@ -478,16 +505,16 @@ struct MessageBubble: View {
             if message.role == .user { Spacer(minLength: 40) }
             VStack(alignment: .leading, spacing: 6) {
                 let imgs: [UIImage] = Self.images(for: message)
-                ForEach(imgs.indices, id: \.self) { idx in
-                    Image(uiImage: imgs[idx])
+                ForEach(imgs, id: \.self) { ui in
+                    Image(uiImage: ui)
                         .resizable()
                         .scaledToFit()
                         .frame(maxWidth: mediaOnly ? 300 : 220, maxHeight: mediaOnly ? 400 : 260)
                         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                        .onTapGesture { zoomImage = imgs[idx] }
+                        .onTapGesture { onZoom(ui) }
                         .contextMenu {
-                            Button { UIPasteboard.general.image = imgs[idx] } label: { Label(L("複製圖片"), systemImage: "doc.on.doc") }
-                            Button { onShare([imgs[idx]]) } label: { Label(L("分享"), systemImage: "square.and.arrow.up") }
+                            Button { UIPasteboard.general.image = ui } label: { Label(L("複製圖片"), systemImage: "doc.on.doc") }
+                            Button { onShare([ui]) } label: { Label(L("分享"), systemImage: "square.and.arrow.up") }
                             Button(role: .destructive) { onDelete() } label: { Label(L("刪除照片"), systemImage: "trash") }
                         }
                 }
@@ -528,9 +555,6 @@ struct MessageBubble: View {
             .background(mediaOnly ? Color.clear : bubbleColor)
             .foregroundStyle(textColor)
             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .fullScreenCover(isPresented: Binding(get: { zoomImage != nil }, set: { if !$0 { zoomImage = nil } })) {
-                if let img = zoomImage { ZoomViewer(image: img) }
-            }
             if message.role != .user { Spacer(minLength: 40) }
         }
 
