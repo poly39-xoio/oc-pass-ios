@@ -62,7 +62,15 @@ enum Trace {
     static func fullDump() -> String {
         let c = crashTail(20)
         let head = (c == "(no crash log)") ? "crash.log: none" : "crash.log: present\n" + c
-        return head + "\n---\n" + tail(25)
+        return head + "\n--- image ---\n" + important(30) + "\n--- tail ---\n" + tail(25)
+    }
+
+    /// 只挑圖片/載入/合併相關的行,避免被後面的 watch.tick 洗掉
+    static func important(_ lines: Int = 30) -> String {
+        guard let s = try? String(contentsOf: url, encoding: .utf8) else { return "(no trace)" }
+        let keys = ["img", "load.", "merge.", "send.slimmed", "send.appended"]
+        let picked = s.split(separator: "\n").filter { line in keys.contains { line.contains($0) } }
+        return picked.suffix(lines).joined(separator: "\n")
     }
 
     static func crashTail(_ lines: Int = 40) -> String {
