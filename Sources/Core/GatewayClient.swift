@@ -202,6 +202,7 @@ final class GatewayClient {
             // 只送圖片/檔案時,gateway 歷史裡的文字是空的;保留這一列,本機附件才接得回去
             return role == .user ? ChatMessage(role: .user, text: "") : nil
         }
+        if trimmed.count > 50000 { return nil }   // 巨型字串(多半是圖片 base64)不進畫面
         // 斷線重連偶爾會把 base64 區塊當訊息存進來:不要顯示
         guard !Self.looksLikeEncodedBlob(trimmed) else { return nil }
         let ts = Self.parseTimestamp(m)

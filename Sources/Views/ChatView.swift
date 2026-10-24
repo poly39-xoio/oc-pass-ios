@@ -631,9 +631,15 @@ struct MessageBubble: View {
 
     /// 隱藏 gateway 留下的媒體標記
     private var visibleText: String {
-        message.text
+        let cleaned = cappedText
+        return cleaned
+    }
+
+    private var cappedText: String {
+        let raw = message.text
             .replacingOccurrences(of: #"\[media attached: [^\]]*\]"#, with: "", options: .regularExpression)
             .trimmingCharacters(in: .whitespacesAndNewlines)
+        return raw.count > 20000 ? String(raw.prefix(2000)) + "\n…（內容過長，已省略）" : raw
     }
 
     private var bubbleColor: Color {

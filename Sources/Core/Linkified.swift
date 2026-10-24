@@ -5,6 +5,7 @@ import SwiftUI
 enum Linkified {
     static func attributed(_ text: String) -> AttributedString {
         var out = AttributedString(text)
+        guard text.count <= 4000 else { return out }   // 超長(通常是 base64/控制字串)不做偵測
         guard let detector = try? NSDataDetector(
             types: NSTextCheckingResult.CheckingType.link.rawValue
         ) else { return out }
