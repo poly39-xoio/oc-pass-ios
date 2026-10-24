@@ -581,6 +581,7 @@ struct MessageBubble: View {
             }
     }
 
+    @ViewBuilder
     private func fileCard(path: String, name: String) -> some View {
         let url = URL(fileURLWithPath: path)
         HStack(spacing: 8) {
