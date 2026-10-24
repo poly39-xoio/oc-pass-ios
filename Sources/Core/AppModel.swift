@@ -439,6 +439,19 @@ final class AppModel: ObservableObject {
         do { try att.data.write(to: url); return url.path } catch { return nil }
     }
 
+
+    private func logImageState(_ tag: String) {
+        let withPaths = messages.filter { $0.imagePaths?.isEmpty == false }
+        var files = 0, missing = 0
+        for m in withPaths {
+            for p in (m.imagePaths ?? []) {
+                if FileManager.default.fileExists(atPath: p) { files += 1 } else { missing += 1 }
+            }
+        }
+        let mem = messages.filter { $0.imageData != nil || $0.imageDatas != nil }.count
+        Trace.mark("\(tag) msgs=\(messages.count) imgMsg=\(withPaths.count) files=\(files) missing=\(missing) memImg=\(mem)")
+    }
+
     private func saveTranscript() {
         guard let key = currentSession?.id, !key.isEmpty else { return }
         // 圖片本體不寫進 transcript(會讓 JSON 爆大 → 閃退);只留磁碟路徑
@@ -499,11 +512,13 @@ final class AppModel: ObservableObject {
         currentSession = session
         let cached = TranscriptCache.load(for: session.id)
         messages = cached          // 先顯示本機快取(斷線也看得到)
+        logImageState("load.cache")
         Task {
             do {
                 let history = try await client.history(sessionKey: session.id)
                 if !history.isEmpty, history.count >= cached.count {
                     messages = mergeLocalAttachments(collapsed(history))
+                    logImageState("load.history")
                     saveTranscript()
                 }
             } catch {
@@ -566,7 +581,7 @@ final class AppModel: ObservableObject {
             Trace.mark("img.store ok=\(paths.count)")
             messages[i].imageData = nil
             messages[i].imageDatas = nil
-            Trace.mark("send.slimmed")
+            logImageState("send.slimmed")
         } else {
             Trace.mark("img.store FAILED keep-memory")
         }
