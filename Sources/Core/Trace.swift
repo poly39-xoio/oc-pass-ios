@@ -59,6 +59,12 @@ enum Trace {
         try? text.write(to: base.appendingPathComponent("crash.log"), atomically: true, encoding: .utf8)
     }
 
+    static func fullDump() -> String {
+        let c = crashTail(20)
+        let head = (c == "(no crash log)") ? "crash.log: none" : "crash.log: present\n" + c
+        return head + "\n---\n" + tail(25)
+    }
+
     static func crashTail(_ lines: Int = 40) -> String {
         let base = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
             ?? FileManager.default.temporaryDirectory

@@ -130,7 +130,7 @@ struct SettingsView: View {
                         section(L("診斷")) {
                             DisclosureGroup {
                                 ScrollView {
-                                    Text("crash.log: " + (Trace.crashTail(1) == "(no crash log)" ? "none" : "present") + "\n---\n" + Trace.crashTail(20) + "\n---\n" + Trace.tail(20))
+                                    Text(Trace.fullDump())
                                         .font(.system(size: 10, design: .monospaced))
                                         .foregroundStyle(Theme.ink)
                                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -142,7 +142,7 @@ struct SettingsView: View {
                                     .foregroundStyle(Theme.muted)
                             }
                             Button {
-                                UIPasteboard.general.string = Trace.tail(40)
+                                UIPasteboard.general.string = Trace.fullDump()
                                 diagCopied = true
                             } label: {
                                 Text(diagCopied ? L("已複製") : L("複製診斷紀錄"))
