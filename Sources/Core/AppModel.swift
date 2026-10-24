@@ -405,7 +405,11 @@ final class AppModel: ObservableObject {
             out.append(contentsOf: locals)
         }
         // 配不到附件的空白使用者訊息就不要顯示(避免空氣泡)
-        return out.filter { !($0.role == .user && $0.text.isEmpty && $0.imageData == nil && $0.attachmentPath == nil) }
+        return out.filter {
+            !($0.role == .user && $0.text.isEmpty
+              && $0.imageData == nil && $0.imageDatas == nil
+              && $0.imagePaths == nil && $0.attachmentPath == nil)
+        }
     }
 
     private func collapsed(_ list: [ChatMessage]) -> [ChatMessage] {
@@ -587,7 +591,7 @@ final class AppModel: ObservableObject {
             messages[i].imageData = nil
             messages[i].imageDatas = nil
             logImageState("send.slimmed")
-        } else {
+        } else if !imgAtts.isEmpty {
             Trace.mark("img.store FAILED keep-memory")
         }
         Trace.mark("send.saved")
