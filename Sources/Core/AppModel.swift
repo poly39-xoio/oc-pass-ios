@@ -87,6 +87,7 @@ final class AppModel: ObservableObject {
         let sv = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
         Trace.mark("app.start v\(sv)(\(v))")
         Trace.installCrashHandler()
+        ImageJournal.migrateIfNeeded()
         client.onEvent { [weak self] name, payload in
             Task { @MainActor in self?.handle(event: name, payload: payload) }
         }
@@ -464,7 +465,7 @@ final class AppModel: ObservableObject {
 
     /// 把使用者送的檔案存到 App 本機(供氣泡顯示 / 分享)
     static func storeAttachment(_ att: PendingAttachment) -> String? {
-        guard let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else { return nil }
+        guard let base = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return nil }
         let dir = base.appendingPathComponent("Attachments", isDirectory: true)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         let safeName = att.name.replacingOccurrences(of: "/", with: "_")

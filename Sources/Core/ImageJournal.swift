@@ -11,8 +11,31 @@ struct SentImageRecord: Codable {
 
 enum ImageJournal {
     private static var file: URL? {
-        guard let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else { return nil }
+        guard let base = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return nil }
         return base.appendingPathComponent("sent-images.json")
+    }
+
+    /// 從舊位置(Application Support)搬到 Documents,並把檔案一起搬
+    static func migrateIfNeeded() {
+        guard let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else { return }
+        let oldDir = base.appendingPathComponent("Attachments", isDirectory: true)
+        guard let newBase = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
+        let newDir = newBase.appendingPathComponent("Attachments", isDirectory: true)
+        try? FileManager.default.createDirectory(at: newDir, withIntermediateDirectories: true)
+        if let items = try? FileManager.default.contentsOfDirectory(at: oldDir, includingPropertiesForKeys: nil) {
+            for src in items {
+                let dst = newDir.appendingPathComponent(src.lastPathComponent)
+                if !FileManager.default.fileExists(atPath: dst.path) {
+                    try? FileManager.default.copyItem(at: src, to: dst)
+                }
+            }
+        }
+        let oldJournal = base.appendingPathComponent("sent-images.json")
+        let newJournal = newBase.appendingPathComponent("sent-images.json")
+        if !FileManager.default.fileExists(atPath: newJournal.path),
+           FileManager.default.fileExists(atPath: oldJournal.path) {
+            try? FileManager.default.copyItem(at: oldJournal, to: newJournal)
+        }
     }
 
     static func all() -> [SentImageRecord] {
