@@ -740,6 +740,12 @@ final class AppModel: ObservableObject {
 
     var totalTokens: Int { sessions.reduce(0) { $0 + $1.totalTokens } }
 
+    init() {
+        let v = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"
+        let sv = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
+        Trace.mark("app.start v\(sv)(\(v))")
+    }
+
     // MARK: - Relay trial
 
     /// 免費層:優先沿用 Keychain 裡的通道(重裝也還在);沒有才申請新的
