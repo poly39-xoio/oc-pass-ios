@@ -12,6 +12,7 @@ struct SettingsView: View {
     @State private var mode = "direct"
     @State private var relayCode = ""
     @State private var showPaywall = false
+    @State private var diagCopied = false
     @State private var showTrial = false
 
     var body: some View {
@@ -142,9 +143,9 @@ struct SettingsView: View {
                             }
                             Button {
                                 UIPasteboard.general.string = Trace.tail(40)
-                                sizeWarning = L("已複製診斷紀錄")
+                                diagCopied = true
                             } label: {
-                                Text(L("複製診斷紀錄"))
+                                Text(diagCopied ? L("已複製") : L("複製診斷紀錄"))
                                     .font(Theme.ui(12, .semibold))
                                     .foregroundStyle(Theme.accent)
                             }
