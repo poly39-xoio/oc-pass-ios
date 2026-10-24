@@ -579,7 +579,7 @@ final class AppModel: ObservableObject {
             var sawActive = false
 
             for _ in 0..<120 {                  // 最多約 3 分鐘
-                try? await Task.sleep(nanoseconds: 600_000_000)
+                try? await Task.sleep(nanoseconds: 1_200_000_000)
                 if Task.isCancelled { return }
 
                 Trace.mark("watch.tick mem=\(Trace.rssMB)MB")
@@ -597,7 +597,7 @@ final class AppModel: ObservableObject {
 
                 // 後備:只有在「最後一則是助理訊息」且內容長度穩定時才算完成
                 Trace.mark("watch.hist.start")
-                if let h = try? await self.client.history(sessionKey: sessionKey), !h.isEmpty {
+                if let h = try? await self.client.history(sessionKey: sessionKey, limit: 40), !h.isEmpty {
                     Trace.mark("watch.hist.done n=\(h.count) mem=\(Trace.rssMB)MB")
                     let visible = self.collapsed(h)
                     let len = visible.reduce(0) { $0 + $1.text.count }
@@ -625,7 +625,7 @@ final class AppModel: ObservableObject {
         // 執行結束 ≠ 回覆已寫進歷史:這裡要等到「最後一則是助理訊息」才收三點,
         // 否則會出現「下一題送出時,上一題答案才跳出來」。
         for _ in 0..<120 {                      // 最多約 60 秒(答案沒到就一直閃)
-            if let h = try? await client.history(sessionKey: sessionKey), !h.isEmpty {
+            if let h = try? await client.history(sessionKey: sessionKey, limit: 40), !h.isEmpty {
                 let c = collapsed(h)
                 if c.last?.role == .assistant {
                     Trace.mark("finish.merge n=\(c.count)")
