@@ -545,12 +545,14 @@ final class AppModel: ObservableObject {
         currentSession = session
         let cached = TranscriptCache.load(for: session.id)
         messages = cached          // 先顯示本機快取(斷線也看得到)
+        ImageJournal.apply(to: &messages, session: session.id)
         logImageState("load.cache")
         Task {
             do {
                 let history = try await client.history(sessionKey: session.id)
                 if !history.isEmpty, history.count >= cached.count {
                     messages = mergeLocalAttachments(collapsed(history))
+                    ImageJournal.apply(to: &messages, session: session.id)
                     logImageState("load.history")
                     saveTranscript()
                 }
@@ -597,7 +599,11 @@ final class AppModel: ObservableObject {
         if !imgAtts.isEmpty {
             userMessage.imageDatas = imgAtts.map(\.data)
             userMessage.imageData = imgAtts.first?.data
-            userMessage.imagePaths = imgAtts.compactMap { Self.storeAttachment($0) }
+            let paths = imgAtts.compactMap { Self.storeAttachment($0) }
+            userMessage.imagePaths = paths
+            if let sid = currentSession?.id, !paths.isEmpty {
+                ImageJournal.add(id: userMessage.id, session: sid, paths: paths, text: shown, date: userMessage.createdAt)
+            }
         }
         if let file = attachments.first(where: { !$0.isImage }) {
             if let path = Self.storeAttachment(file) {
