@@ -303,8 +303,8 @@ struct ChatView: View {
             Task {
                 var added: [PendingAttachment] = []
                 let multi = items.count > 1
-                let maxB = multi ? 1_200_000 : 6_000_000
-                let maxD: CGFloat = multi ? 1600 : 2048
+                let maxB = multi ? 500_000 : 700_000
+                let maxD: CGFloat = multi ? 1000 : 1200
                 for item in items {
                     if let data = try? await item.loadTransferable(type: Data.self) {
                         let att = await Task.detached { () -> PendingAttachment? in
