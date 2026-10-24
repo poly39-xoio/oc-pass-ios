@@ -399,6 +399,11 @@ final class AppModel: ObservableObject {
                 out[i].attachmentName = saved.attachmentName
             }
         }
+        // 歷史裡可能沒有「只有圖片」的那一則 → 把沒配對到的本機附件訊息補回去
+        if !locals.isEmpty {
+            Trace.mark("merge.keepLocal \(locals.count)")
+            out.append(contentsOf: locals)
+        }
         // 配不到附件的空白使用者訊息就不要顯示(避免空氣泡)
         return out.filter { !($0.role == .user && $0.text.isEmpty && $0.imageData == nil && $0.attachmentPath == nil) }
     }
