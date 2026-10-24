@@ -535,7 +535,7 @@ struct MessageBubble: View {
                 if !visibleText.isEmpty {
                     Text(Linkified.attributed(visibleText))
                         .font(Theme.ui(15))
-                        .tint(Theme.accent)
+                        .tint(textColor)
                         .textSelection(.enabled)
                         .contextMenu {
                             Button {
