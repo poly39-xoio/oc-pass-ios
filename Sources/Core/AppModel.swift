@@ -542,6 +542,12 @@ final class AppModel: ObservableObject {
         messages.append(userMessage)
         Trace.mark("send.appended msgId=\(userMessage.id) imgs=\(userMessage.imageDatas?.count ?? 0)")
         saveTranscript()
+        // 圖片本體已寫到磁碟 → 記憶體只留路徑,避免多張累積後被系統砍掉
+        if let i = messages.firstIndex(where: { $0.id == userMessage.id }), messages[i].imagePaths != nil {
+            messages[i].imageData = nil
+            messages[i].imageDatas = nil
+        }
+        Trace.mark("send.slimmed")
         Trace.mark("send.saved")
         streaming = true
         awaitingReply = true      // 三點持續閃到真正拿到最終回覆

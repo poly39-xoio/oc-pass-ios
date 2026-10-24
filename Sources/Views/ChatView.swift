@@ -472,7 +472,10 @@ struct MessageBubble: View {
     }
 
     private static let imgCache: NSCache<NSString, UIImage> = {
-        let c = NSCache<NSString, UIImage>(); c.countLimit = 60; return c
+        let c = NSCache<NSString, UIImage>()
+        c.countLimit = 20
+        c.totalCostLimit = 48 * 1024 * 1024
+        return c
     }()
 
     static func images(for m: ChatMessage) -> [UIImage] {
@@ -481,20 +484,20 @@ struct MessageBubble: View {
             for (i, d) in ds.enumerated() {
                 let key = "\(m.id)-d\(i)" as NSString
                 if let c = imgCache.object(forKey: key) { out.append(c); continue }
-                if let ui = UIImage(data: d) { imgCache.setObject(ui, forKey: key); out.append(ui) }
+                if let ui = UIImage(data: d) { imgCache.setObject(ui, forKey: key, cost: d.count); out.append(ui) }
             }
             return out
         }
         if let d = m.imageData {
             let key = "\(m.id)-single" as NSString
             if let c = imgCache.object(forKey: key) { return [c] }
-            if let ui = UIImage(data: d) { imgCache.setObject(ui, forKey: key); return [ui] }
+            if let ui = UIImage(data: d) { imgCache.setObject(ui, forKey: key, cost: d.count); return [ui] }
         }
         if let ps = m.imagePaths {
             for (i, path) in ps.enumerated() {
                 let key = "\(m.id)-p\(i)" as NSString
                 if let c = imgCache.object(forKey: key) { out.append(c); continue }
-                if let ui = UIImage(contentsOfFile: path) { imgCache.setObject(ui, forKey: key); out.append(ui) }
+                if let ui = UIImage(contentsOfFile: path) { imgCache.setObject(ui, forKey: key, cost: 2 * 1024 * 1024); out.append(ui) }
             }
         }
         return out
