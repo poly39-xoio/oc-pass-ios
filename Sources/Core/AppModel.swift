@@ -634,9 +634,12 @@ final class AppModel: ObservableObject {
         for _ in 0..<120 {                      // 最多約 60 秒(答案沒到就一直閃)
             if let h = try? await client.history(sessionKey: sessionKey, limit: 40), !h.isEmpty {
                 let c = collapsed(h)
-                if c.last?.role == .assistant {
-                    Trace.mark("finish.merge n=\(c.count)")
-                    messages = mergeLocalAttachments(c)
+                if let last = c.last, last.role == .assistant {
+                    // 不再整份替換(重建畫面疑似觸發崩潰):只補最後一則助理回覆
+                    Trace.mark("finish.append len=\(last.text.count)")
+                    if messages.last?.text != last.text {
+                        messages.append(ChatMessage(role: .assistant, text: last.text))
+                    }
                     saveTranscript()
                     streaming = false
                     awaitingReply = false
@@ -646,7 +649,10 @@ final class AppModel: ObservableObject {
             try? await Task.sleep(nanoseconds: 500_000_000)
         }
         if let h = try? await client.history(sessionKey: sessionKey), !h.isEmpty {
-            messages = mergeLocalAttachments(collapsed(h))
+            let c = collapsed(h)
+            if let last = c.last, last.role == .assistant, messages.last?.text != last.text {
+                messages.append(ChatMessage(role: .assistant, text: last.text))
+            }
             saveTranscript()
         }
         streaming = false
