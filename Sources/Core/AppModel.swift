@@ -376,22 +376,31 @@ final class AppModel: ObservableObject {
     /// 歷史刷新後,把本機記住的圖片/檔案接回對應訊息。
     /// 先比文字;文字對不上(gateway 歷史裡附件訊息是空字串)時,依使用者訊息順序配回去。
     private func mergeLocalAttachments(_ list: [ChatMessage]) -> [ChatMessage] {
-        var locals = messages.filter { ($0.imageData != nil || $0.imageDatas != nil || $0.imagePaths != nil || $0.attachmentPath != nil) && $0.role == .user }
+        var locals: [(msg: ChatMessage, anchor: String?)] = []
+        for (i, m) in messages.enumerated() where m.role == .user &&
+            (m.imageData != nil || m.imageDatas != nil || m.imagePaths != nil || m.attachmentPath != nil) {
+            var anchor: String? = nil
+            if i + 1 < messages.count, messages[i+1].role == .assistant, !messages[i+1].text.isEmpty {
+                anchor = messages[i+1].text
+            }
+            locals.append((m, anchor))
+        }
         guard !locals.isEmpty else { return list }
         var out = list
         func isPlaceholder(_ t: String) -> Bool {
             t.isEmpty || t.hasPrefix("[附件]") || t.contains("[media attached")
         }
         for i in out.indices where out[i].role == .user {
-            if !isPlaceholder(out[i].text), let j = locals.firstIndex(where: { !isPlaceholder($0.text) && $0.text == out[i].text }) {
-                out[i].imageData = locals[j].imageData
-                out[i].imageDatas = locals[j].imageDatas
-                out[i].imagePaths = locals[j].imagePaths
-                out[i].attachmentPath = locals[j].attachmentPath
-                out[i].attachmentName = locals[j].attachmentName
+            if !isPlaceholder(out[i].text), let j = locals.firstIndex(where: { !isPlaceholder($0.msg.text) && $0.msg.text == out[i].text }) {
+                let saved = locals[j].msg
+                out[i].imageData = saved.imageData
+                out[i].imageDatas = saved.imageDatas
+                out[i].imagePaths = saved.imagePaths
+                out[i].attachmentPath = saved.attachmentPath
+                out[i].attachmentName = saved.attachmentName
                 locals.remove(at: j)
             } else if isPlaceholder(out[i].text), !locals.isEmpty {
-                let saved = locals.removeFirst()
+                let saved = locals.removeFirst().msg
                 out[i].imageData = saved.imageData
                 out[i].imageDatas = saved.imageDatas
                 out[i].imagePaths = saved.imagePaths
@@ -402,13 +411,22 @@ final class AppModel: ObservableObject {
         // 歷史裡可能沒有「只有圖片」的那一則 → 把沒配對到的本機附件訊息補回去
         if !locals.isEmpty {
             Trace.mark("merge.keepLocal \(locals.count)")
-            // 插在「最後一輪助理回覆」之前,而不是直接丟到最尾端
-            var trailing: [ChatMessage] = []
-            while let last = out.last, last.role == .assistant {
-                trailing.insert(out.removeLast(), at: 0)
+            var rest: [ChatMessage] = []
+            for item in locals {
+                if let anchor = item.anchor, let idx = out.firstIndex(where: { $0.role == .assistant && $0.text == anchor }) {
+                    out.insert(item.msg, at: idx)          // 插在它對應的回覆前面
+                } else {
+                    rest.append(item.msg)
+                }
             }
-            out.append(contentsOf: locals)
-            out.append(contentsOf: trailing)
+            if !rest.isEmpty {
+                var trailing: [ChatMessage] = []
+                while let last = out.last, last.role == .assistant {
+                    trailing.insert(out.removeLast(), at: 0)
+                }
+                out.append(contentsOf: rest)
+                out.append(contentsOf: trailing)
+            }
         }
         // 配不到附件的空白使用者訊息就不要顯示(避免空氣泡)
         return out.filter {
