@@ -130,7 +130,7 @@ struct SettingsView: View {
                         section(L("診斷")) {
                             DisclosureGroup {
                                 ScrollView {
-                                    Text(Trace.tail(40))
+                                    Text(Trace.crashTail(30) + "\n---\n" + Trace.tail(20))
                                         .font(.system(size: 10, design: .monospaced))
                                         .foregroundStyle(Theme.ink)
                                         .frame(maxWidth: .infinity, alignment: .leading)

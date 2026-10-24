@@ -86,6 +86,7 @@ final class AppModel: ObservableObject {
         let v = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"
         let sv = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
         Trace.mark("app.start v\(sv)(\(v))")
+        Trace.installCrashHandler()
         client.onEvent { [weak self] name, payload in
             Task { @MainActor in self?.handle(event: name, payload: payload) }
         }

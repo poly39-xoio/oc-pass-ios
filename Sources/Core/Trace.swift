@@ -38,4 +38,34 @@ enum Trace {
     }
 
     static func clear() { try? FileManager.default.removeItem(at: url) }
+
+    // MARK: - 崩潰攔截(把 call stack 寫檔,下次開 App 可查看)
+
+    private static var crashURL: URL { url.deletingLastPathComponent().appendingPathComponent("crash.log") }
+
+    static func installCrashHandler() {
+        NSSetUncaughtExceptionHandler { ex in
+            let text = "UNCAUGHT \(ex.name.rawValue): \(ex.reason ?? "")\n" + Thread.callStackSymbols.joined(separator: "\n")
+            try? text.write(to: crashURLValue(), atomically: true, encoding: .utf8)
+        }
+        for sig in [SIGABRT, SIGILL, SIGSEGV, SIGFPE, SIGBUS, SIGTRAP] {
+            signal(sig) { s in
+                let text = "SIGNAL \(s)\n" + Thread.callStackSymbols.joined(separator: "\n")
+                try? text.write(to: crashURLValue(), atomically: true, encoding: .utf8)
+                signal(s, SIG_DFL)
+                raise(s)
+            }
+        }
+    }
+
+    private static func crashURLValue() -> URL {
+        let base = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory
+        return base.appendingPathComponent("crash.log")
+    }
+
+    static func crashTail(_ lines: Int = 40) -> String {
+        guard let s = try? String(contentsOf: crashURLValue(), encoding: .utf8) else { return "(no crash log)" }
+        return s.split(separator: "\n").suffix(lines).joined(separator: "\n")
+    }
 }
