@@ -83,6 +83,9 @@ final class AppModel: ObservableObject {
     private var heartbeatTask: Task<Void, Never>?
 
     init() {
+        let v = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"
+        let sv = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
+        Trace.mark("app.start v\(sv)(\(v))")
         client.onEvent { [weak self] name, payload in
             Task { @MainActor in self?.handle(event: name, payload: payload) }
         }
@@ -739,12 +742,6 @@ final class AppModel: ObservableObject {
     }
 
     var totalTokens: Int { sessions.reduce(0) { $0 + $1.totalTokens } }
-
-    init() {
-        let v = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"
-        let sv = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
-        Trace.mark("app.start v\(sv)(\(v))")
-    }
 
     // MARK: - Relay trial
 
