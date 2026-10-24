@@ -435,7 +435,7 @@ struct ChatView: View {
             }
             Spacer()
             Button { model.showSettings = true } label: {
-                Image(systemName: "link")
+                Image(systemName: "gearshape.fill")
                     .font(.system(size: 17, weight: .semibold))
                     .frame(width: 34, height: 22)
             }
