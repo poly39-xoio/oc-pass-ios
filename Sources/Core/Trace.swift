@@ -1,4 +1,5 @@
 import Foundation
+import Darwin
 
 /// 極簡追蹤:把關鍵步驟寫到 Documents/trace.log,閃退後重開可在設定頁看到
 enum Trace {
@@ -17,6 +18,17 @@ enum Trace {
         } else {
             try? line.write(to: url, atomically: true, encoding: .utf8)
         }
+    }
+
+    static var rssMB: Int {
+        var info = mach_task_basic_info()
+        var count = mach_msg_type_number_t(MemoryLayout<mach_task_basic_info>.size / MemoryLayout<natural_t>.size)
+        let kr = withUnsafeMutablePointer(to: &info) {
+            $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+                task_info(mach_task_self_, task_flavor_t(MACH_TASK_BASIC_INFO), $0, &count)
+            }
+        }
+        return kr == KERN_SUCCESS ? Int(info.resident_size / 1024 / 1024) : -1
     }
 
     static func tail(_ lines: Int = 40) -> String {

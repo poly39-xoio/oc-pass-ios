@@ -582,7 +582,9 @@ final class AppModel: ObservableObject {
                 try? await Task.sleep(nanoseconds: 600_000_000)
                 if Task.isCancelled { return }
 
-                Trace.mark("watch.tick")
+                Trace.mark("watch.tick mem=\(Trace.rssMB)MB")
+                Trace.mark("watch.row.start")
+                defer { Trace.mark("watch.row.done") }
                 if let row = try? await self.client.sessionRow(key: sessionKey) {
                     if row.hasActiveRun || row.activeRunIds.contains(runId) {
                         sawActive = true
@@ -594,7 +596,9 @@ final class AppModel: ObservableObject {
                 }
 
                 // 後備:只有在「最後一則是助理訊息」且內容長度穩定時才算完成
+                Trace.mark("watch.hist.start")
                 if let h = try? await self.client.history(sessionKey: sessionKey), !h.isEmpty {
+                    Trace.mark("watch.hist.done n=\(h.count) mem=\(Trace.rssMB)MB")
                     let visible = self.collapsed(h)
                     let len = visible.reduce(0) { $0 + $1.text.count }
                     let endsWithAssistant = visible.last?.role == .assistant
