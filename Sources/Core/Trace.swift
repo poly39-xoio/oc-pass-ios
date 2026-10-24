@@ -60,7 +60,10 @@ enum Trace {
     }
 
     static func crashTail(_ lines: Int = 40) -> String {
-        guard let s = try? String(contentsOf: crashURLValue(), encoding: .utf8) else { return "(no crash log)" }
+        let base = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory
+        let f = base.appendingPathComponent("crash.log")
+        guard let s = try? String(contentsOf: f, encoding: .utf8) else { return "(no crash log)" }
         return s.split(separator: "\n").suffix(lines).joined(separator: "\n")
     }
 }
