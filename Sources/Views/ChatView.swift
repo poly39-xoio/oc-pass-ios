@@ -508,19 +508,12 @@ struct MessageBubble: View {
             if message.role == .user { Spacer(minLength: 40) }
             VStack(alignment: .leading, spacing: 6) {
                 let imgs: [UIImage] = Self.images(for: message)
-                ForEach(imgs, id: \.self) { ui in
-                    Image(uiImage: ui)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(maxWidth: mediaOnly ? 300 : 220, maxHeight: mediaOnly ? 400 : 260)
-                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                        .onTapGesture { onZoom(ui) }
-                        .contextMenu {
-                            Button { UIPasteboard.general.image = ui } label: { Label(L("複製圖片"), systemImage: "doc.on.doc") }
-                            Button { onShare([ui]) } label: { Label(L("分享"), systemImage: "square.and.arrow.up") }
-                            Button(role: .destructive) { onDelete() } label: { Label(L("刪除照片"), systemImage: "trash") }
-                        }
-                }
+                if imgs.count > 0 { bubbleImage(imgs[0]) }
+                if imgs.count > 1 { bubbleImage(imgs[1]) }
+                if imgs.count > 2 { bubbleImage(imgs[2]) }
+                if imgs.count > 3 { bubbleImage(imgs[3]) }
+                if imgs.count > 4 { bubbleImage(imgs[4]) }
+                if imgs.count > 5 { bubbleImage(imgs[5]) }
                 if let path = message.attachmentPath, FileManager.default.fileExists(atPath: path) {
                     fileCard(path: path, name: message.attachmentName ?? URL(fileURLWithPath: path).lastPathComponent)
                 }
@@ -574,6 +567,21 @@ struct MessageBubble: View {
     }
 
     @ViewBuilder
+    @ViewBuilder
+    private func bubbleImage(_ ui: UIImage) -> some View {
+        Image(uiImage: ui)
+            .resizable()
+            .scaledToFit()
+            .frame(maxWidth: mediaOnly ? 300 : 220, maxHeight: mediaOnly ? 400 : 260)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .onTapGesture { onZoom(ui) }
+            .contextMenu {
+                Button { UIPasteboard.general.image = ui } label: { Label(L("複製圖片"), systemImage: "doc.on.doc") }
+                Button { onShare([ui]) } label: { Label(L("分享"), systemImage: "square.and.arrow.up") }
+                Button(role: .destructive) { onDelete() } label: { Label(L("刪除照片"), systemImage: "trash") }
+            }
+    }
+
     private func fileCard(path: String, name: String) -> some View {
         let url = URL(fileURLWithPath: path)
         HStack(spacing: 8) {
