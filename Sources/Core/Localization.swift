@@ -126,6 +126,8 @@ private let EN: [String: String] = [
     "自己填 URL 與 token（進階）": "Enter URL and token yourself (advanced)",
     "不用連線，先看看介面": "No connection needed — take a look",
     "退出": "Exit",
+    "診斷": "Diagnostics",
+    "最近的執行紀錄（閃退前的最後步驟）": "Recent trace (last steps before a crash)",
     "讀取會話失敗": "Couldn't load chats",
     "切換模型失敗:": "Failed to switch model: ",
     // Demo(模式內文字也要跟著語系)

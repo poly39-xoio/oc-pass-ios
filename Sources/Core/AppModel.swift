@@ -435,6 +435,7 @@ final class AppModel: ObservableObject {
     private func saveTranscript() {
         guard let key = currentSession?.id, !key.isEmpty else { return }
         // 圖片本體不寫進 transcript(會讓 JSON 爆大 → 閃退);只留磁碟路徑
+        Trace.mark("saveTranscript n=\(messages.count)")
         let slim = messages.map { m -> ChatMessage in
             var c = m
             if c.imageData != nil || c.imageDatas != nil {
@@ -525,6 +526,7 @@ final class AppModel: ObservableObject {
             }
             return
         }
+        Trace.mark("send.start text=\(trimmed.count) atts=\(attachments.count) imgs=\(attachments.filter { $0.isImage }.count)")
         let imgAtts = attachments.filter { $0.isImage }
         if !imgAtts.isEmpty {
             userMessage.imageDatas = imgAtts.map(\.data)
@@ -538,13 +540,17 @@ final class AppModel: ObservableObject {
             }
         }
         messages.append(userMessage)
+        Trace.mark("send.appended msgId=\(userMessage.id) imgs=\(userMessage.imageDatas?.count ?? 0)")
         saveTranscript()
+        Trace.mark("send.saved")
         streaming = true
         awaitingReply = true      // 三點持續閃到真正拿到最終回覆
         streamingMessageId = nil
 
         do {
+            Trace.mark("send.network.start")
             let res = try await client.send(sessionKey: session.id, message: trimmed, attachments: attachments)
+            Trace.mark("send.network.done run=\(res.runId)")
             startRunWatch(sessionKey: session.id, runId: res.runId)
         } catch {
             streaming = false
@@ -570,6 +576,7 @@ final class AppModel: ObservableObject {
                 try? await Task.sleep(nanoseconds: 600_000_000)
                 if Task.isCancelled { return }
 
+                Trace.mark("watch.tick")
                 if let row = try? await self.client.sessionRow(key: sessionKey) {
                     if row.hasActiveRun || row.activeRunIds.contains(runId) {
                         sawActive = true
@@ -604,12 +611,14 @@ final class AppModel: ObservableObject {
     }
 
     private func finishRun(_ sessionKey: String) async {
+        Trace.mark("finish.start")
         // 執行結束 ≠ 回覆已寫進歷史:這裡要等到「最後一則是助理訊息」才收三點,
         // 否則會出現「下一題送出時,上一題答案才跳出來」。
         for _ in 0..<120 {                      // 最多約 60 秒(答案沒到就一直閃)
             if let h = try? await client.history(sessionKey: sessionKey), !h.isEmpty {
                 let c = collapsed(h)
                 if c.last?.role == .assistant {
+                    Trace.mark("finish.merge n=\(c.count)")
                     messages = mergeLocalAttachments(c)
                     saveTranscript()
                     streaming = false
