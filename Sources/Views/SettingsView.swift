@@ -127,30 +127,6 @@ struct SettingsView: View {
                             }
                         }
 
-                        section(L("診斷")) {
-                            DisclosureGroup {
-                                ScrollView {
-                                    Text(Trace.fullDump())
-                                        .font(.system(size: 10, design: .monospaced))
-                                        .foregroundStyle(Theme.ink)
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                }
-                                .frame(maxHeight: 220)
-                            } label: {
-                                Text(L("最近的執行紀錄（閃退前的最後步驟）"))
-                                    .font(Theme.ui(12, .semibold))
-                                    .foregroundStyle(Theme.muted)
-                            }
-                            Button {
-                                UIPasteboard.general.string = Trace.fullDump()
-                                diagCopied = true
-                            } label: {
-                                Text(diagCopied ? L("已複製") : L("複製診斷紀錄"))
-                                    .font(Theme.ui(12, .semibold))
-                                    .foregroundStyle(Theme.accent)
-                            }
-                        }
-
                         section(L("使用說明")) {
                             VStack(alignment: .leading, spacing: 8) {
                                 Text(L("OC Pass 是針對 OpenClaw Gateway 所設計的優化器。"))

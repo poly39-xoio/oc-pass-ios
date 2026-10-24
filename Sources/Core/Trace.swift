@@ -9,7 +9,11 @@ enum Trace {
         return base.appendingPathComponent("trace.log")
     }()
 
+    /// 正式版關閉(除錯時改成 true)
+    static let enabled = false
+
     static func mark(_ tag: String) {
+        guard enabled else { return }
         let line = "\(Int(Date().timeIntervalSince1970)).\(String(format: "%03d", Int(Date().timeIntervalSince1970 * 1000) % 1000)) \(tag)\n"
         if let h = try? FileHandle(forWritingTo: url) {
             h.seekToEndOfFile()
