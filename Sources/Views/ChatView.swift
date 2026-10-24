@@ -169,7 +169,8 @@ struct ChatView: View {
     // MARK: - Messages
 
     private var messageList: some View {
-        ScrollViewReader { proxy in
+        let _ = Trace.mark("render.list n=\(model.messages.count) img=\(model.messages.filter { $0.imageData != nil || $0.imageDatas != nil || $0.imagePaths != nil }.count)")
+        return ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 10) {
                     ForEach(model.messages.filter { !$0.isHidden }) { m in
