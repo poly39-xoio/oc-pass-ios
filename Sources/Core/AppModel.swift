@@ -660,22 +660,32 @@ final class AppModel: ObservableObject {
             var stableTicks = 0
             var sawActive = false
 
-            for _ in 0..<120 {                  // 最多約 3 分鐘
-                try? await Task.sleep(nanoseconds: 1_200_000_000)
+            // 2026-10-24 John: A+B 一起做
+            // A) 執行中只問 sessions.describe,不再每輪重抓 chat.history(約 15KB/輪 → 0.5KB/輪)
+            // B) 輪詢 1.2s → 0.6s,完成後最快約 0.6s 就跳出來
+            for tick in 0..<300 {               // 0.6s × 300 ≈ 3 分鐘
+                try? await Task.sleep(nanoseconds: 600_000_000)
                 if Task.isCancelled { return }
 
                 Trace.mark("watch.tick mem=\(Trace.rssMB)MB")
                 Trace.mark("watch.row.start")
-                defer { Trace.mark("watch.row.done") }
+                var stillRunning = false
                 if let row = try? await self.client.sessionRow(key: sessionKey) {
+                    Trace.mark("watch.row.done")
                     if row.hasActiveRun || row.activeRunIds.contains(runId) {
                         sawActive = true
                         idleTicks = 0
+                        stillRunning = true
                     } else {
                         idleTicks += 1
                     }
                     if sawActive && idleTicks >= 1 { await self.finishRun(sessionKey); return }
                 }
+
+                // A:確定還在跑就只確認狀態,不抓歷史
+                if stillRunning { continue }
+                // 還沒看到 active 時(極快的回覆 / describe 失敗),每 4 輪才抓一次歷史當備援
+                if !sawActive && tick % 4 != 3 { continue }
 
                 // 後備:只有在「最後一則是助理訊息」且內容長度穩定時才算完成
                 Trace.mark("watch.hist.start")
