@@ -567,7 +567,6 @@ struct MessageBubble: View {
     }
 
     @ViewBuilder
-    @ViewBuilder
     private func bubbleImage(_ ui: UIImage) -> some View {
         Image(uiImage: ui)
             .resizable()
