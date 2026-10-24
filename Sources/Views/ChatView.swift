@@ -568,6 +568,18 @@ struct MessageBubble: View {
 
     @ViewBuilder
     private func bubbleImage(_ ui: UIImage) -> some View {
+        // BISECT: 暫時停用 UIImage 渲染,確認崩點是否在圖片 View
+        HStack(spacing: 6) {
+            Image(systemName: "photo")
+            Text("圖片").font(Theme.ui(13, .semibold))
+        }
+        .padding(10)
+        .background(Theme.panel2)
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+
+    @ViewBuilder
+    private func bubbleImageDisabled(_ ui: UIImage) -> some View {
         Image(uiImage: ui)
             .resizable()
             .scaledToFit()
