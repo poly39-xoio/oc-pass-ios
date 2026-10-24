@@ -445,10 +445,21 @@ final class AppModel: ObservableObject {
         Trace.mark("saveTranscript n=\(messages.count)")
         let slim = messages.map { m -> ChatMessage in
             var c = m
-            if c.imageData != nil || c.imageDatas != nil {
-                c.imageData = nil
-                c.imageDatas = nil
+            if c.imagePaths == nil || c.imagePaths?.isEmpty == true {
+                var paths: [String] = []
+                if let ds = c.imageDatas {
+                    for (i, d) in ds.enumerated() {
+                        let att = PendingAttachment(name: "photo-\(Int(Date().timeIntervalSince1970))-\(i).jpg", mimeType: "image/jpeg", data: d)
+                        if let p = Self.storeAttachment(att) { paths.append(p) }
+                    }
+                } else if let d = c.imageData {
+                    let att = PendingAttachment(name: "photo-\(Int(Date().timeIntervalSince1970)).jpg", mimeType: "image/jpeg", data: d)
+                    if let p = Self.storeAttachment(att) { paths.append(p) }
+                }
+                if !paths.isEmpty { c.imagePaths = paths }
             }
+            c.imageData = nil
+            c.imageDatas = nil
             return c
         }
         TranscriptCache.save(slim, for: key)
@@ -550,11 +561,15 @@ final class AppModel: ObservableObject {
         Trace.mark("send.appended msgId=\(userMessage.id) imgs=\(userMessage.imageDatas?.count ?? 0)")
         saveTranscript()
         // 圖片本體已寫到磁碟 → 記憶體只留路徑,避免多張累積後被系統砍掉
-        if let i = messages.firstIndex(where: { $0.id == userMessage.id }), messages[i].imagePaths != nil {
+        if let i = messages.firstIndex(where: { $0.id == userMessage.id }),
+           let paths = messages[i].imagePaths, paths.count == imgAtts.count, !paths.isEmpty {
+            Trace.mark("img.store ok=\(paths.count)")
             messages[i].imageData = nil
             messages[i].imageDatas = nil
+            Trace.mark("send.slimmed")
+        } else {
+            Trace.mark("img.store FAILED keep-memory")
         }
-        Trace.mark("send.slimmed")
         Trace.mark("send.saved")
         streaming = true
         awaitingReply = true      // 三點持續閃到真正拿到最終回覆
