@@ -505,7 +505,13 @@ final class AppModel: ObservableObject {
     func sendAsync(_ text: String, attachments: [PendingAttachment]) async throws {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !(trimmed.isEmpty && attachments.isEmpty), let session = currentSession else { return }
-        let shown = trimmed.isEmpty ? (attachments.count == 1 ? "[附件] \(attachments[0].name)" : "[附件] \(attachments.count) 個檔案") : trimmed
+        let imgCount = attachments.filter { $0.isImage }.count
+        let fileCount = attachments.count - imgCount
+        let shown: String
+        if !trimmed.isEmpty { shown = trimmed }
+        else if fileCount > 0 {
+            shown = attachments.count == 1 ? "[附件] \(attachments[0].name)" : "[附件] \(attachments.count) 個檔案"
+        } else { shown = "" }   // 只有圖片 → 不塞文字,泡泡才會貼合圖片
         var userMessage = ChatMessage(role: .user, text: shown)
         if isDemo {
             messages.append(userMessage)

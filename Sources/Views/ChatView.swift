@@ -302,7 +302,9 @@ struct ChatView: View {
                 let maxD: CGFloat = multi ? 1600 : 2048
                 for item in items {
                     if let data = try? await item.loadTransferable(type: Data.self) {
-                        let att = await Task.detached { Self.makeImageAttachment(data, maxBytes: maxB, maxDim: maxD) }.value
+                        let att = await Task.detached { () -> PendingAttachment? in
+                            autoreleasepool { Self.makeImageAttachment(data, maxBytes: maxB, maxDim: maxD) }
+                        }.value
                         if let att { added.append(att) } else { await MainActor.run { sizeWarning = L("無法讀取這個檔案") } }
                     }
                 }
@@ -358,17 +360,15 @@ struct ChatView: View {
 
     /// 圖片 > 6 MB 自動壓縮(縮尺寸 + 降品質)
     static func makeImageAttachment(_ data: Data, maxBytes: Int = 6 * 1024 * 1024, maxDim: CGFloat = 2048) -> PendingAttachment? {
-        guard var img = UIImage(data: data) else { return nil }
-        // 先縮到最大邊長,再壓品質
-        let longest = max(img.size.width, img.size.height)
-        if longest > maxDim {
-            let sc = maxDim / longest
-            let size = CGSize(width: img.size.width * sc, height: img.size.height * sc)
-            UIGraphicsBeginImageContextWithOptions(size, false, 1)
-            img.draw(in: CGRect(origin: .zero, size: size))
-            if let small = UIGraphicsGetImageFromCurrentImageContext() { img = small }
-            UIGraphicsEndImageContext()
-        }
+        // 用 ImageIO 直接產生縮圖,不要先解整張原圖(48MP 原圖會瞬間吃掉 200MB)
+        guard let src = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
+        let opts: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxDim
+        ]
+        guard let cg = CGImageSourceCreateThumbnailAtIndex(src, 0, opts as CFDictionary) else { return nil }
+        let img = UIImage(cgImage: cg)
         let limit = maxBytes
         var out = img.jpegData(compressionQuality: 0.9) ?? data
         var quality: CGFloat = 0.9
@@ -461,7 +461,9 @@ struct MessageBubble: View {
 
     private var mediaOnly: Bool {
         let has = message.imageData != nil || (message.imageDatas?.isEmpty == false) || (message.imagePaths?.isEmpty == false)
-        return has && visibleText.isEmpty && message.attachmentPath == nil
+        let t = visibleText
+        let placeholderOnly = t.isEmpty || (t.hasPrefix("[附件]") && !t.contains("\n"))
+        return has && placeholderOnly && message.attachmentPath == nil
     }
 
     static func images(for m: ChatMessage) -> [UIImage] {
