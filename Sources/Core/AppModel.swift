@@ -377,14 +377,14 @@ final class AppModel: ObservableObject {
     /// 歷史刷新後,把本機記住的圖片/檔案接回對應訊息。
     /// 先比文字;文字對不上(gateway 歷史裡附件訊息是空字串)時,依使用者訊息順序配回去。
     private func mergeLocalAttachments(_ list: [ChatMessage]) -> [ChatMessage] {
-        var locals: [(msg: ChatMessage, anchor: String?)] = []
+        var locals: [(msg: ChatMessage, next: String?, prev: String?)] = []
         for (i, m) in messages.enumerated() where m.role == .user &&
             (m.imageData != nil || m.imageDatas != nil || m.imagePaths != nil || m.attachmentPath != nil) {
-            var anchor: String? = nil
-            if i + 1 < messages.count, messages[i+1].role == .assistant, !messages[i+1].text.isEmpty {
-                anchor = messages[i+1].text
-            }
-            locals.append((m, anchor))
+            var next: String? = nil
+            var prev: String? = nil
+            if i + 1 < messages.count, !messages[i+1].text.isEmpty { next = messages[i+1].text }
+            if i > 0, !messages[i-1].text.isEmpty { prev = messages[i-1].text }
+            locals.append((m, next, prev))
         }
         guard !locals.isEmpty else { return list }
         var out = list
@@ -414,8 +414,10 @@ final class AppModel: ObservableObject {
             Trace.mark("merge.keepLocal \(locals.count)")
             var rest: [ChatMessage] = []
             for item in locals {
-                if let anchor = item.anchor, let idx = out.firstIndex(where: { $0.role == .assistant && $0.text == anchor }) {
-                    out.insert(item.msg, at: idx)          // 插在它對應的回覆前面
+                if let next = item.next, let idx = out.firstIndex(where: { $0.text == next }) {
+                    out.insert(item.msg, at: idx)          // 插在下一則之前
+                } else if let prev = item.prev, let idx = out.firstIndex(where: { $0.text == prev }) {
+                    out.insert(item.msg, at: min(idx + 1, out.count))   // 插在上一則之後
                 } else {
                     rest.append(item.msg)
                 }
