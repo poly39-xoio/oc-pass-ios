@@ -168,8 +168,23 @@ struct ChatView: View {
 
     // MARK: - Messages
 
+    private static let bisectPlain = true
+
     private var messageList: some View {
-        ScrollViewReader { proxy in
+        if Self.bisectPlain {
+            return AnyView(ScrollView {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(model.messages.filter { !$0.isHidden }) { m in
+                        Text(m.text.isEmpty ? "（圖片）" : m.text)
+                            .font(.system(size: 14))
+                            .foregroundStyle(.white)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+                .padding(12)
+            })
+        }
+        return AnyView(ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 10) {
                     ForEach(model.messages.filter { !$0.isHidden }) { m in
@@ -209,7 +224,7 @@ struct ChatView: View {
             .onChange(of: model.awaitingReply) { _, typing in
                 if typing { scrollToBottom(proxy, delay: 0.05, anchor: "typing-indicator") }
             }
-        }
+        })
     }
 
     // MARK: - Attachment chips
