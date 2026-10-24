@@ -402,7 +402,13 @@ final class AppModel: ObservableObject {
         // 歷史裡可能沒有「只有圖片」的那一則 → 把沒配對到的本機附件訊息補回去
         if !locals.isEmpty {
             Trace.mark("merge.keepLocal \(locals.count)")
+            // 插在「最後一輪助理回覆」之前,而不是直接丟到最尾端
+            var trailing: [ChatMessage] = []
+            while let last = out.last, last.role == .assistant {
+                trailing.insert(out.removeLast(), at: 0)
+            }
             out.append(contentsOf: locals)
+            out.append(contentsOf: trailing)
         }
         // 配不到附件的空白使用者訊息就不要顯示(避免空氣泡)
         return out.filter {
