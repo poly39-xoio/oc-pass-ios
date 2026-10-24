@@ -525,6 +525,7 @@ struct MessageBubble: View {
                     Text(Linkified.attributed(visibleText))
                         .font(Theme.ui(15))
                         .tint(Theme.accent)
+                        .textSelection(.enabled)
                         .contextMenu {
                             Button {
                                 UIPasteboard.general.string = visibleText

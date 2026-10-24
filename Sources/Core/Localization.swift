@@ -128,6 +128,8 @@ private let EN: [String: String] = [
     "退出": "Exit",
     "診斷": "Diagnostics",
     "最近的執行紀錄（閃退前的最後步驟）": "Recent trace (last steps before a crash)",
+    "複製診斷紀錄": "Copy diagnostics",
+    "已複製診斷紀錄": "Diagnostics copied",
     "讀取會話失敗": "Couldn't load chats",
     "切換模型失敗:": "Failed to switch model: ",
     // Demo(模式內文字也要跟著語系)

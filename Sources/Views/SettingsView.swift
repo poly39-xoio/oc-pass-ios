@@ -140,6 +140,14 @@ struct SettingsView: View {
                                     .font(Theme.ui(12, .semibold))
                                     .foregroundStyle(Theme.muted)
                             }
+                            Button {
+                                UIPasteboard.general.string = Trace.tail(40)
+                                sizeWarning = L("已複製診斷紀錄")
+                            } label: {
+                                Text(L("複製診斷紀錄"))
+                                    .font(Theme.ui(12, .semibold))
+                                    .foregroundStyle(Theme.accent)
+                            }
                         }
 
                         section(L("使用說明")) {
