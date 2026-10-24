@@ -435,8 +435,8 @@ struct ChatView: View {
             }
             Spacer()
             Button { model.showSettings = true } label: {
-                Image(systemName: "gearshape.fill")
-                    .font(.system(size: 17, weight: .semibold))
+                Image(systemName: "gearshape")
+                    .font(.system(size: 18, weight: .medium))
                     .frame(width: 34, height: 22)
             }
             .accessibilityLabel("連線")
