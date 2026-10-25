@@ -175,7 +175,7 @@ struct ChatView: View {
             return AnyView(ScrollView {
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(model.messages.filter { !$0.isHidden }) { m in
-                        Text(m.text.isEmpty ? "（圖片）" : m.text)
+                        Text(m.text.isEmpty ? L("（圖片）") : m.text)
                             .font(.system(size: 14))
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -301,10 +301,10 @@ struct ChatView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 5)
-        .confirmationDialog("附加檔案", isPresented: $showAttachMenu, titleVisibility: .visible) {
+        .confirmationDialog(L("附加檔案"), isPresented: $showAttachMenu, titleVisibility: .visible) {
             Button(L("照片")) { showPhotoPicker = true }
             Button(L("檔案")) { showFileImporter = true }
-            Button("取消", role: .cancel) {}
+            Button(L("取消"), role: .cancel) {}
         }
         .photosPicker(isPresented: $showPhotoPicker, selection: $photoItems, maxSelectionCount: 6, matching: .images)
         .fileImporter(isPresented: $showFileImporter, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
@@ -439,7 +439,7 @@ struct ChatView: View {
                     .font(.system(size: 18, weight: .medium))
                     .frame(width: 34, height: 22)
             }
-            .accessibilityLabel("連線")
+            .accessibilityLabel(L("連線"))
         }
         .font(Theme.ui(12, .semibold))
         .foregroundStyle(.white.opacity(0.92))
@@ -470,7 +470,7 @@ struct TypingBubble: View {
                     }
                 }
                 if let since, elapsed >= 2 {
-                    Text("工作中 " + Self.mmss(elapsed))
+                    Text(L("工作中") + " " + Self.mmss(elapsed))
                         .font(.system(size: 12, weight: .medium))
                         .foregroundStyle(Theme.ink.opacity(0.55))
                         .monospacedDigit()
@@ -554,19 +554,19 @@ struct MessageBubble: View {
                 if let path = message.attachmentPath, FileManager.default.fileExists(atPath: path) {
                     fileCard(path: path, name: message.attachmentName ?? URL(fileURLWithPath: path).lastPathComponent)
                 }
-                if !visibleText.isEmpty {
-                    Text(Linkified.attributed(visibleText))
+                if !displayText.isEmpty {
+                    Text(Linkified.attributed(displayText))
                         .font(Theme.ui(15))
                         .tint(textColor)
                         .textSelection(.enabled)
                         .contextMenu {
                             Button {
-                                UIPasteboard.general.string = visibleText
+                                UIPasteboard.general.string = displayText
                             } label: {
                                 Label(L("複製"), systemImage: "doc.on.doc")
                             }
                             Button {
-                                onShare([visibleText])
+                                onShare([displayText])
                             } label: {
                                 Label(L("分享文字"), systemImage: "square.and.arrow.up")
                             }
@@ -683,11 +683,20 @@ struct MessageBubble: View {
         return cleaned
     }
 
+    /// 英文模式把附件佔位符也翻掉(只影響顯示/複製,不動媒體判定)
+    private var displayText: String {
+        guard Language.isEnglish else { return visibleText }
+        return visibleText
+            .replacingOccurrences(of: "[附件] ", with: "[Attachment] ")
+            .replacingOccurrences(of: " 個檔案", with: " files")
+            .replacingOccurrences(of: "[附件]", with: "[Attachment]")
+    }
+
     private var cappedText: String {
         let raw = message.text
             .replacingOccurrences(of: #"\[media attached: [^\]]*\]"#, with: "", options: .regularExpression)
             .trimmingCharacters(in: .whitespacesAndNewlines)
-        return raw.count > 20000 ? String(raw.prefix(2000)) + "\n…（內容過長，已省略）" : raw
+        return raw.count > 20000 ? String(raw.prefix(2000)) + L("\n…（內容過長，已省略）") : raw
     }
 
     private var bubbleColor: Color {

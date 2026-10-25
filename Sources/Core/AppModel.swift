@@ -127,22 +127,22 @@ final class AppModel: ObservableObject {
             if let (url, boot) = Self.decodeSetupCode(payload) {
                 connectBootstrap(url: url, bootstrapToken: boot)
             } else {
-                state = .failed("配對碼無法解析")
+                state = .failed(L("配對碼無法解析"))
             }
             return
         }
         guard let comps = URLComponents(string: raw) else {
-            state = .failed("QR 內容無法解析"); return
+            state = .failed(L("QR 內容無法解析")); return
         }
         let items = comps.queryItems ?? []
         let urlStr = items.first(where: { $0.name == "url" })?.value
         let boot = items.first(where: { $0.name == "bootstrapToken" })?.value
         let tok = items.first(where: { $0.name == "token" })?.value
         guard let urlStr, let url = URL(string: urlStr) else {
-            state = .failed("QR 內容無法解析"); return
+            state = .failed(L("QR 內容無法解析")); return
         }
         if let boot, !boot.isEmpty { connectBootstrap(url: url, bootstrapToken: boot); return }
-        guard let tok, !tok.isEmpty else { state = .failed("QR 內容無法解析"); return }
+        guard let tok, !tok.isEmpty else { state = .failed(L("QR 內容無法解析")); return }
         connect(url: url, token: tok)
     }
 
@@ -215,9 +215,9 @@ final class AppModel: ObservableObject {
     func connectRelay(code: String, token tk: TokenString = "") {
         let effective = tk.isEmpty ? (Self.relayEmbeddedToken(code) ?? "") : tk
         guard let url = Self.parseRelayURL(code) else {
-            state = .failed("Relay 配對碼無法解析"); return
+            state = .failed(L("Relay 配對碼無法解析")); return
         }
-        guard !effective.isEmpty else { state = .failed("配對碼沒有 token,請手動輸入"); return }
+        guard !effective.isEmpty else { state = .failed(L("配對碼沒有 token,請手動輸入")); return }
         connect(url: url, token: effective)
     }
 
@@ -238,7 +238,7 @@ final class AppModel: ObservableObject {
                 state = .authenticating
                 let hello = try await client.connect(url: url, auth: .bootstrap(bootstrapToken))
                 guard let op = hello.operatorToken ?? hello.deviceToken, !op.isEmpty else {
-                    state = .failed("配對完成但沒拿到裝置憑證"); return
+                    state = .failed(L("配對完成但沒拿到裝置憑證")); return
                 }
                 client.disconnect()
                 gatewayURL = url
@@ -269,7 +269,7 @@ final class AppModel: ObservableObject {
                 currentGateway = Gateway(name: url.host ?? "gateway", url: url, lastSeen: Date())
                 if let v = hello.serverVersion, !v.isEmpty {
                     gatewayVersion = v
-                    versionWarning = Self.isTooOld(v) ? "Gateway 版本過舊(\(v)),請更新後再使用" : nil
+                    versionWarning = Self.isTooOld(v) ? String(format: L("Gateway 版本過舊(%@),請更新後再使用"), v) : nil
                 }
                 reconnectAttempt = 0
                 state = .ready
@@ -562,7 +562,7 @@ final class AppModel: ObservableObject {
                 }
             } catch {
                 if cached.isEmpty {
-                    messages = [ChatMessage(role: .system, text: "讀取歷史失敗:\(error.localizedDescription)")]
+                    messages = [ChatMessage(role: .system, text: String(format: L("讀取歷史失敗:%@"), error.localizedDescription))]
                 }
             }
         }
@@ -835,7 +835,7 @@ final class AppModel: ObservableObject {
                 actionError = nil
                 await loadDashboard()
             } catch {
-                actionError = "執行任務失敗:" + error.localizedDescription
+                actionError = L("執行任務失敗:") + error.localizedDescription
             }
         }
     }
@@ -879,7 +879,7 @@ final class AppModel: ObservableObject {
             if let err { DispatchQueue.main.async { self.trialError = err.localizedDescription }; return }
             guard let data,
                   let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-                DispatchQueue.main.async { self.trialError = "Relay 回應格式錯誤" }; return
+                DispatchQueue.main.async { self.trialError = L("Relay 回應格式錯誤") }; return
             }
             if let e = obj["error"] as? String {
                 if e == "trial already used" {
@@ -890,7 +890,7 @@ final class AppModel: ObservableObject {
                 return
             }
             guard let id = obj["id"] as? String, let secret = obj["secret"] as? String else {
-                DispatchQueue.main.async { self.trialError = "Relay 沒有回傳通道資訊" }; return
+                DispatchQueue.main.async { self.trialError = L("Relay 沒有回傳通道資訊") }; return
             }
             DispatchQueue.main.async { self.applyChannel(id, secret) }
         }.resume()
@@ -904,7 +904,7 @@ final class AppModel: ObservableObject {
         let payload = "recover|\(dev.deviceId)|\(ts)"
         guard let sig = dev.sign(payload),
               let url = URL(string: "https://xoio.io/relay/recover") else {
-            trialLoading = false; trialError = "裝置簽章失敗"; return
+            trialLoading = false; trialError = L("裝置簽章失敗"); return
         }
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
@@ -917,7 +917,7 @@ final class AppModel: ObservableObject {
             guard let data,
                   let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let id = obj["id"] as? String, let secret = obj["secret"] as? String else {
-                DispatchQueue.main.async { self.trialError = "取不回原本的連線，請稍後再試" }
+                DispatchQueue.main.async { self.trialError = L("取不回原本的連線，請稍後再試") }
                 return
             }
             DispatchQueue.main.async { self.applyChannel(id, secret) }
@@ -1006,7 +1006,7 @@ final class AppModel: ObservableObject {
 
     func setModel(_ model: String) {
         guard let key = currentSession?.id else {
-            actionError = "沒有選取會話"; return
+            actionError = L("沒有選取會話"); return
         }
         Task {
             do {

@@ -31,15 +31,15 @@ struct DashboardView: View {
             }
             .navigationBarTitleDisplayMode(.inline)
             .task { await model.loadDashboard() }
-            .confirmationDialog("撤銷這台裝置？", isPresented: Binding(
+            .confirmationDialog(L("撤銷這台裝置？"), isPresented: Binding(
                 get: { deviceToRemove != nil },
                 set: { if !$0 { deviceToRemove = nil } }
             ), titleVisibility: .visible) {
-                Button("撤銷（需重新配對）", role: .destructive) {
+                Button(L("撤銷（需重新配對）"), role: .destructive) {
                     if let d = deviceToRemove { model.remove(d) }
                     deviceToRemove = nil
                 }
-                Button("取消", role: .cancel) { deviceToRemove = nil }
+                Button(L("取消"), role: .cancel) { deviceToRemove = nil }
             } message: {
                 Text(deviceToRemove.map { "\($0.name) \($0.ip)" } ?? "")
             }
@@ -206,7 +206,7 @@ struct DashboardView: View {
                                 .clipShape(Capsule())
                         }
                         HStack(spacing: 6) {
-                            Text(job.scheduleText + (job.nextRunAt.map { " · 下次 " + shortTime($0) } ?? ""))
+                            Text(job.scheduleText + (job.nextRunAt.map { L(" · 下次 ") + shortTime($0) } ?? ""))
                                 .font(Theme.ui(10)).foregroundStyle(Theme.muted).lineLimit(1)
                             if let st = job.lastStatus, st != "ok" {
                                 Text(st).font(Theme.ui(10, .bold)).foregroundStyle(Theme.warn)

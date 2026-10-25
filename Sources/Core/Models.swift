@@ -68,7 +68,7 @@ struct GatewayCronJob: Identifiable, Equatable {
         if let expr = sched["expr"] as? String {
             text = expr + ((sched["tz"] as? String).map { " · \($0)" } ?? "")
         } else if let every = sched["everyMs"] as? Double {
-            text = "每 \(max(1, Int(every / 60000))) 分鐘"
+            text = String(format: L("每 %d 分鐘"), max(1, Int(every / 60000)))
         } else if let at = sched["at"] as? String {
             text = at
         }
@@ -107,7 +107,7 @@ struct PendingApproval: Identifiable, Equatable {
     static func parse(_ d: [String: Any]) -> PendingApproval? {
         let rid = (d["requestId"] as? String) ?? (d["id"] as? String) ?? ""
         guard !rid.isEmpty else { return nil }
-        let name = (d["deviceName"] as? String) ?? (d["name"] as? String) ?? (d["displayName"] as? String) ?? "未知裝置"
+        let name = (d["deviceName"] as? String) ?? (d["name"] as? String) ?? (d["displayName"] as? String) ?? L("未知裝置")
         let platform = (d["platform"] as? String) ?? (d["role"] as? String) ?? "—"
         let ip = (d["ip"] as? String) ?? (d["remoteAddr"] as? String) ?? ""
         return PendingApproval(id: rid, deviceName: name, platform: platform, ip: ip)
@@ -125,7 +125,7 @@ struct PairedDevice: Identifiable, Equatable {
     static func parse(_ d: [String: Any]) -> PairedDevice? {
         let did = (d["deviceId"] as? String) ?? (d["id"] as? String) ?? ""
         guard !did.isEmpty else { return nil }
-        let name = (d["displayName"] as? String) ?? (d["name"] as? String) ?? "裝置"
+        let name = (d["displayName"] as? String) ?? (d["name"] as? String) ?? L("裝置")
         let roles = (d["roles"] as? [String])?.joined(separator: ",") ?? (d["role"] as? String) ?? "—"
         let ip = (d["ip"] as? String) ?? (d["remoteAddr"] as? String) ?? ""
         return PairedDevice(id: did, name: name, roles: roles, ip: ip, online: (d["online"] as? Bool) ?? false)

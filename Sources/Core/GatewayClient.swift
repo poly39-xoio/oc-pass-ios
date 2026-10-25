@@ -52,9 +52,9 @@ final class GatewayClient {
         case notConnected, challengeTimeout, pairingRequired(String), server(String)
         var errorDescription: String? {
             switch self {
-            case .notConnected: return "尚未連線"
-            case .challengeTimeout: return "Gateway 沒有回應 challenge"
-            case .pairingRequired(let id): return "需要配對核准:\(id)"
+            case .notConnected: return L("尚未連線")
+            case .challengeTimeout: return L("Gateway 沒有回應 challenge")
+            case .pairingRequired(let id): return String(format: L("需要配對核准:%@"), id)
             case .server(let m): return m
             }
         }
@@ -87,7 +87,7 @@ final class GatewayClient {
                                               clientMode: mode, role: role, scopes: scopes,
                                               signedAt: signedAt, token: auth.signToken, nonce: nonce,
                                               platform: platform, deviceFamily: family)
-        guard let signature = identity.sign(payload) else { throw ClientError.server("簽章失敗") }
+        guard let signature = identity.sign(payload) else { throw ClientError.server(L("簽章失敗")) }
 
         let params: [String: Any] = [
             "minProtocol": 4, "maxProtocol": 4,
@@ -270,9 +270,9 @@ final class GatewayClient {
         let inner = dict["session"] as? [String: Any] ?? dict
         if let s = GatewaySession.parse(inner) { return s }
         let key = (inner["key"] as? String) ?? (inner["sessionKey"] as? String) ?? ""
-        guard !key.isEmpty else { throw ClientError.server("sessions.create 沒有回傳 session key") }
+        guard !key.isEmpty else { throw ClientError.server(L("sessions.create 沒有回傳 session key")) }
         return GatewaySession(id: key, sessionId: inner["sessionId"] as? String ?? key,
-                              title: inner["displayName"] as? String ?? "新對話",
+                              title: inner["displayName"] as? String ?? L("新對話"),
                               updatedAt: Date(), unread: 0, totalTokens: 0,
                               hasActiveRun: false, activeRunIds: [], model: nil)
     }

@@ -59,7 +59,7 @@ final class ScannerVC: UIViewController, AVCaptureMetadataOutputObjectsDelegate 
         hint.font = .systemFont(ofSize: 15, weight: .medium)
         hint.numberOfLines = 0
         hint.textAlignment = .center
-        hint.text = "正在開啟相機…"
+        hint.text = L("正在開啟相機…")
         hint.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(hint)
         NSLayoutConstraint.activate([
@@ -90,11 +90,11 @@ final class ScannerVC: UIViewController, AVCaptureMetadataOutputObjectsDelegate 
             AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
                 DispatchQueue.main.async {
                     if granted { self?.configure() }
-                    else { self?.show("沒有相機權限。請到 iPhone 設定 → OC Pass → 相機 開啟，或改用手動貼 token。") }
+                    else { self?.show(L("沒有相機權限。請到 iPhone 設定 → OC Pass → 相機 開啟，或改用手動貼 token。")) }
                 }
             }
         default:
-            show("沒有相機權限。請到 iPhone 設定 → OC Pass → 相機 開啟，或改用手動貼 token。")
+            show(L("沒有相機權限。請到 iPhone 設定 → OC Pass → 相機 開啟，或改用手動貼 token。"))
         }
     }
 
@@ -105,14 +105,14 @@ final class ScannerVC: UIViewController, AVCaptureMetadataOutputObjectsDelegate 
         guard let device = AVCaptureDevice.default(for: .video),
               let input = try? AVCaptureDeviceInput(device: device),
               session.canAddInput(input) else {
-            show("這台裝置沒有可用的相機。")
+            show(L("這台裝置沒有可用的相機。"))
             return
         }
         session.addInput(input)
 
         let output = AVCaptureMetadataOutput()
         guard session.canAddOutput(output) else {
-            show("相機初始化失敗，請改用手動貼 token。")
+            show(L("相機初始化失敗，請改用手動貼 token。"))
             return
         }
         session.addOutput(output)
@@ -125,7 +125,7 @@ final class ScannerVC: UIViewController, AVCaptureMetadataOutputObjectsDelegate 
         view.layer.insertSublayer(layer, at: 0)
         preview = layer
 
-        hint.text = "把 QR 對準鏡頭"
+        hint.text = L("把 QR 對準鏡頭")
 
         DispatchQueue.global(qos: .userInitiated).async {
             self.session.startRunning()

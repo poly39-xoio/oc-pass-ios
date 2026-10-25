@@ -147,7 +147,36 @@ private let EN: [String: String] = [
     "取不回原本的連線，請稍後再試": "Couldn't restore your previous connection — please try again.",
     "裝置簽章失敗": "Device signing failed.",
     "Relay 回應格式錯誤": "Unexpected response from relay.",
-    "Relay 沒有回傳通道資訊": "Relay did not return channel info."
+    "Relay 沒有回傳通道資訊": "Relay did not return channel info.",
+    // 執行狀態 / 錯誤 / 掃描器(2026-10-25 補齊,英文模式殘留中文)
+    "工作中": "Working",
+    "（圖片）": "(Image)",
+    "尚未連線": "Not connected",
+    "Gateway 沒有回應 challenge": "Gateway did not answer the challenge",
+    "需要配對核准:%@": "Pairing approval required: %@",
+    "簽章失敗": "Signing failed.",
+    "sessions.create 沒有回傳 session key": "sessions.create returned no session key",
+    "新對話": "New chat",
+    "配對碼無法解析": "Cannot parse the pairing code.",
+    "QR 內容無法解析": "Cannot parse the QR code.",
+    "配對碼沒有 token,請手動輸入": "The pairing code has no token — please paste a token manually.",
+    "配對完成但沒拿到裝置憑證": "Pairing finished but no device credential was returned.",
+    "Gateway 版本過舊(%@),請更新後再使用": "Gateway version is too old (%@). Please update it before using this app.",
+    "讀取歷史失敗:%@": "Failed to load history: %@",
+    "執行任務失敗:": "Job failed: ",
+    "沒有選取會話": "No chat selected.",
+    "每 %d 分鐘": "every %d min",
+    " · 下次 ": " · next ",
+    "未知裝置": "Unknown device",
+    "裝置": "Device",
+    "正在開啟相機…": "Starting camera…",
+    "沒有相機權限。請到 iPhone 設定 → OC Pass → 相機 開啟，或改用手動貼 token。":
+        "No camera access. Turn it on in iPhone Settings → OC Pass → Camera, or paste a token manually.",
+    "這台裝置沒有可用的相機。": "No camera available on this device.",
+    "相機初始化失敗，請改用手動貼 token。": "The camera could not start — paste a token manually.",
+    "把 QR 對準鏡頭": "Point the camera at the QR code",
+    "附件總量超過 24 MB，請減少張數": "Attachments exceed 24 MB in total — remove some.",
+    "\n…（內容過長，已省略）": "\n… (message too long — truncated)"
 ]
 
 func L(_ key: String) -> String {

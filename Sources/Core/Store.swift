@@ -34,7 +34,7 @@ final class Store: ObservableObject {
             products = list.sorted {
                 ($0.id == Self.monthly ? 0 : 1) < ($1.id == Self.monthly ? 0 : 1)
             }
-            if products.isEmpty { error = "找不到訂閱商品(可能還在 App Store Connect 審核設定中)" }
+            if products.isEmpty { error = L("找不到訂閱商品(可能還在 App Store Connect 審核設定中)") }
             await refreshEntitlement()
         } catch {
             self.error = error.localizedDescription

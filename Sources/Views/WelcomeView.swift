@@ -116,7 +116,7 @@ struct WelcomeView: View {
             case .connecting: ProgressView().tint(.white)
             case .authenticating: ProgressView().tint(.white)
             case .pairing(let id):
-                Text("需要配對核准:\(id)")
+                Text(String(format: L("需要配對核准:%@"), id))
                     .font(Theme.ui(12)).foregroundStyle(.white.opacity(0.85))
             case .failed(let msg):
                 Text(msg)
