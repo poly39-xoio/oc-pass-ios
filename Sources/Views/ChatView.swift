@@ -474,12 +474,12 @@ struct AttachMenuSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 4) {
             Text(L("附加檔案"))
-                .font(Theme.ui(12, .semibold))
+                .font(Theme.ui(11, .semibold))
                 .foregroundStyle(.white.opacity(0.75))
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.leading, 4)
+                .padding(.leading, 3)
 
             row(icon: "photo", title: L("照片"), action: onPhoto)
             row(icon: "doc", title: L("檔案"), action: onFile)
@@ -488,22 +488,22 @@ struct AttachMenuSheet: View {
                 dismiss()
             } label: {
                 Text(L("取消"))
-                    .font(Theme.ui(14, .semibold))
+                    .font(Theme.ui(12, .semibold))
                     .foregroundStyle(Theme.muted)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 38)
+                    .frame(height: 22)
                     .background(Theme.panel2)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             }
             .buttonStyle(.plain)
-            .padding(.top, 2)
+            .padding(.top, 1)
         }
-        .padding(.horizontal, 14)
-        .padding(.top, 12)
-        .padding(.bottom, 10)
+        .padding(.horizontal, 12)
+        .padding(.top, 6)
+        .padding(.bottom, 6)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(Theme.bgSoft)
-        .presentationDetents([.height(202)])
+        .presentationDetents([.height(114)])
         .presentationDragIndicator(.hidden)
         .presentationCornerRadius(14)
     }
@@ -515,17 +515,17 @@ struct AttachMenuSheet: View {
         } label: {
             HStack(spacing: 10) {
                 Image(systemName: icon)
-                    .font(.system(size: 15, weight: .semibold))
-                    .frame(width: 22)
+                    .font(.system(size: 12, weight: .semibold))
+                    .frame(width: 18)
                 Text(title)
-                    .font(Theme.ui(15, .medium))
+                    .font(Theme.ui(13, .medium))
                 Spacer(minLength: 0)
             }
             .foregroundStyle(Theme.ink)
-            .padding(.horizontal, 12)
-            .frame(height: 44)
+            .padding(.horizontal, 10)
+            .frame(height: 26)
             .background(Theme.panel)
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
         }
         .buttonStyle(.plain)
     }
