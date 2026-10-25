@@ -279,8 +279,7 @@ struct ChatView: View {
 
             AttachMenuCard(
                 onPhoto: { attachChoice = .photo; showAttachMenu = false },
-                onFile: { attachChoice = .file; showAttachMenu = false },
-                onCancel: { showAttachMenu = false }
+                onFile: { attachChoice = .file; showAttachMenu = false }
             )
             .frame(width: max(160, UIScreen.main.bounds.width / 2 - 12))
             .padding(.trailing, 12)
@@ -493,55 +492,28 @@ enum AttachChoice { case photo, file }
 struct AttachMenuCard: View {
     var onPhoto: () -> Void
     var onFile: () -> Void
-    var onCancel: () -> Void
 
     var body: some View {
         VStack(spacing: 8) {
-            Text(L("附加檔案"))
-                .font(Theme.ui(12, .semibold))
-                .foregroundStyle(.white.opacity(0.75))
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.leading, 4)
-
-            row(icon: "photo", title: L("照片"), action: onPhoto)
-            row(icon: "doc", title: L("檔案"), action: onFile)
-
-            Button(action: onCancel) {
-                Text(L("取消"))
-                    .font(Theme.ui(14, .semibold))
-                    .foregroundStyle(Theme.muted)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 38)
-                    .background(Theme.panel2)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-            }
-            .buttonStyle(.plain)
-            .padding(.top, 2)
+            row(title: L("照片"), action: onPhoto)
+            row(title: L("檔案"), action: onFile)
         }
-        .padding(.horizontal, 12)
-        .padding(.top, 10)
-        .padding(.bottom, 10)
+        .padding(8)
         .background(Theme.bgSoft)
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .shadow(color: .black.opacity(0.22), radius: 14, y: 6)
     }
 
-    private func row(icon: String, title: String, action: @escaping () -> Void) -> some View {
+    private func row(title: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            HStack(spacing: 10) {
-                Image(systemName: icon)
-                    .font(.system(size: 15, weight: .semibold))
-                    .frame(width: 22)
-                Text(title)
-                    .font(Theme.ui(15, .medium))
-                    .lineLimit(1)
-                Spacer(minLength: 0)
-            }
+            Text(title)
+                .font(Theme.ui(15, .medium))
+                .lineLimit(1)
             .foregroundStyle(Theme.ink)
-            .padding(.horizontal, 12)
-            .frame(height: 44)
-            .background(Theme.panel)
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .frame(maxWidth: .infinity)
+                .frame(height: 44)
+                .background(Theme.panel)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
         .buttonStyle(.plain)
     }
