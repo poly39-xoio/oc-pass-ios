@@ -37,6 +37,11 @@ struct ChatView: View {
                 bottomBar
             }
         }
+        .overlay {
+            if showAttachMenu {
+                attachOverlay
+            }
+        }
         .fullScreenCover(isPresented: Binding(get: { zoomImage != nil }, set: { if !$0 { zoomImage = nil } })) {
             if let img = zoomImage { ZoomViewer(image: img) }
         }
@@ -51,6 +56,9 @@ struct ChatView: View {
         }
         .onChange(of: model.currentSession?.id) { _, _ in restoreDraft() }
         .onChange(of: draft) { _, v in persistDraft(v) }
+        .onChange(of: showAttachMenu) { _, open in
+            if !open { openPendingPicker() }
+        }
         .onChange(of: speech.transcript) { _, t in
             guard speech.isRecording, !t.isEmpty else { return }
             draft = dictationBase.isEmpty ? t : dictationBase + " " + t
@@ -262,12 +270,32 @@ struct ChatView: View {
         }
     }
 
+    /// 附件選單浮層:半寬小卡 + 點空白處關閉
+    private var attachOverlay: some View {
+        ZStack(alignment: .bottomTrailing) {
+            Color.black.opacity(0.15)
+                .ignoresSafeArea()
+                .onTapGesture { showAttachMenu = false }
+
+            AttachMenuCard(
+                onPhoto: { attachChoice = .photo; showAttachMenu = false },
+                onFile: { attachChoice = .file; showAttachMenu = false },
+                onCancel: { showAttachMenu = false }
+            )
+            .frame(width: max(160, UIScreen.main.bounds.width / 2 - 12))
+            .padding(.trailing, 12)
+            .padding(.bottom, 88)
+            .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .bottomTrailing)))
+        }
+        .transition(.opacity)
+    }
+
     // MARK: - Input
 
     private var inputBar: some View {
         HStack(alignment: .bottom, spacing: 8) {
             Button {
-                showAttachMenu = true
+                withAnimation(.easeOut(duration: 0.16)) { showAttachMenu = true }
             } label: {
                 Image(systemName: "paperclip")
                     .font(.system(size: 19, weight: .semibold))
@@ -302,12 +330,6 @@ struct ChatView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 5)
-        .sheet(isPresented: $showAttachMenu, onDismiss: openPendingPicker) {
-            AttachMenuSheet(
-                onPhoto: { attachChoice = .photo },
-                onFile: { attachChoice = .file }
-            )
-        }
         .photosPicker(isPresented: $showPhotoPicker, selection: $photoItems, maxSelectionCount: 6, matching: .images)
         .fileImporter(isPresented: $showFileImporter, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
             switch result {
@@ -467,65 +489,59 @@ struct ChatView: View {
 
 enum AttachChoice { case photo, file }
 
-/// 小尺寸附加檔案選單:自畫圓角長方形列(不用系統 action sheet,iOS 26 會把每列畫成膠囊)
-struct AttachMenuSheet: View {
+/// 附加檔案選單:浮在輸入框上方的小卡,寬度 = 螢幕一半
+struct AttachMenuCard: View {
     var onPhoto: () -> Void
     var onFile: () -> Void
-    @Environment(\.dismiss) private var dismiss
+    var onCancel: () -> Void
 
     var body: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: 8) {
             Text(L("附加檔案"))
-                .font(Theme.ui(11, .semibold))
+                .font(Theme.ui(12, .semibold))
                 .foregroundStyle(.white.opacity(0.75))
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.leading, 3)
+                .padding(.leading, 4)
 
             row(icon: "photo", title: L("照片"), action: onPhoto)
             row(icon: "doc", title: L("檔案"), action: onFile)
 
-            Button {
-                dismiss()
-            } label: {
+            Button(action: onCancel) {
                 Text(L("取消"))
-                    .font(Theme.ui(12, .semibold))
+                    .font(Theme.ui(14, .semibold))
                     .foregroundStyle(Theme.muted)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 22)
+                    .frame(height: 38)
                     .background(Theme.panel2)
-                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
             }
             .buttonStyle(.plain)
-            .padding(.top, 1)
+            .padding(.top, 2)
         }
         .padding(.horizontal, 12)
-        .padding(.top, 6)
-        .padding(.bottom, 6)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .padding(.top, 10)
+        .padding(.bottom, 10)
         .background(Theme.bgSoft)
-        .presentationDetents([.height(114)])
-        .presentationDragIndicator(.hidden)
-        .presentationCornerRadius(14)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .shadow(color: .black.opacity(0.22), radius: 14, y: 6)
     }
 
     private func row(icon: String, title: String, action: @escaping () -> Void) -> some View {
-        Button {
-            dismiss()
-            action()
-        } label: {
+        Button(action: action) {
             HStack(spacing: 10) {
                 Image(systemName: icon)
-                    .font(.system(size: 12, weight: .semibold))
-                    .frame(width: 18)
+                    .font(.system(size: 15, weight: .semibold))
+                    .frame(width: 22)
                 Text(title)
-                    .font(Theme.ui(13, .medium))
+                    .font(Theme.ui(15, .medium))
+                    .lineLimit(1)
                 Spacer(minLength: 0)
             }
             .foregroundStyle(Theme.ink)
-            .padding(.horizontal, 10)
-            .frame(height: 26)
+            .padding(.horizontal, 12)
+            .frame(height: 44)
             .background(Theme.panel)
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
         }
         .buttonStyle(.plain)
     }
