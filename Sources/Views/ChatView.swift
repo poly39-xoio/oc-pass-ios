@@ -11,6 +11,7 @@ struct ChatView: View {
     @State private var inputFocused = false
     @State private var pending: [PendingAttachment] = []
     @State private var showAttachMenu = false
+    @State private var attachChoice: AttachChoice?
     @State private var showPhotoPicker = false
     @State private var showFileImporter = false
     @State private var photoItems: [PhotosPickerItem] = []
@@ -301,10 +302,11 @@ struct ChatView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 5)
-        .confirmationDialog(L("附加檔案"), isPresented: $showAttachMenu, titleVisibility: .visible) {
-            Button(L("照片")) { showPhotoPicker = true }
-            Button(L("檔案")) { showFileImporter = true }
-            Button(L("取消"), role: .cancel) {}
+        .sheet(isPresented: $showAttachMenu, onDismiss: openPendingPicker) {
+            AttachMenuSheet(
+                onPhoto: { attachChoice = .photo },
+                onFile: { attachChoice = .file }
+            )
         }
         .photosPicker(isPresented: $showPhotoPicker, selection: $photoItems, maxSelectionCount: 6, matching: .images)
         .fileImporter(isPresented: $showFileImporter, allowedContentTypes: [.item], allowsMultipleSelection: true) { result in
@@ -449,6 +451,83 @@ struct ChatView: View {
         .sheet(isPresented: $model.showDashboard) {
             DashboardView()
         }
+    }
+    /// 選單關掉之後才開相簿/檔案,避免兩個 presentation 撞在一起
+    private func openPendingPicker() {
+        guard let choice = attachChoice else { return }
+        attachChoice = nil
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+            switch choice {
+            case .photo: showPhotoPicker = true
+            case .file: showFileImporter = true
+            }
+        }
+    }
+}
+
+enum AttachChoice { case photo, file }
+
+/// 小尺寸附加檔案選單:自畫圓角長方形列(不用系統 action sheet,iOS 26 會把每列畫成膠囊)
+struct AttachMenuSheet: View {
+    var onPhoto: () -> Void
+    var onFile: () -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(spacing: 8) {
+            Text(L("附加檔案"))
+                .font(Theme.ui(12, .semibold))
+                .foregroundStyle(.white.opacity(0.75))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.leading, 4)
+
+            row(icon: "photo", title: L("照片"), action: onPhoto)
+            row(icon: "doc", title: L("檔案"), action: onFile)
+
+            Button {
+                dismiss()
+            } label: {
+                Text(L("取消"))
+                    .font(Theme.ui(14, .semibold))
+                    .foregroundStyle(Theme.muted)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 38)
+                    .background(Theme.panel2)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 2)
+        }
+        .padding(.horizontal, 14)
+        .padding(.top, 12)
+        .padding(.bottom, 10)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(Theme.bgSoft)
+        .presentationDetents([.height(202)])
+        .presentationDragIndicator(.hidden)
+        .presentationCornerRadius(14)
+    }
+
+    private func row(icon: String, title: String, action: @escaping () -> Void) -> some View {
+        Button {
+            dismiss()
+            action()
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: icon)
+                    .font(.system(size: 15, weight: .semibold))
+                    .frame(width: 22)
+                Text(title)
+                    .font(Theme.ui(15, .medium))
+                Spacer(minLength: 0)
+            }
+            .foregroundStyle(Theme.ink)
+            .padding(.horizontal, 12)
+            .frame(height: 44)
+            .background(Theme.panel)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+        .buttonStyle(.plain)
     }
 }
 
