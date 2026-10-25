@@ -14,6 +14,7 @@ final class AppModel: ObservableObject {
     @Published var streaming = false
     /// 送出後到「真正拿到最終回覆」前都保持 true(三點一直閃)
     @Published var awaitingReply = false
+    @Published var workingSince: Date?
     @Published var showConsole = false
     @Published var gatewayURL: URL?
     @Published var gatewayToken: TokenString = ""
@@ -633,6 +634,7 @@ final class AppModel: ObservableObject {
         Trace.mark("send.saved")
         streaming = true
         awaitingReply = true      // 三點持續閃到真正拿到最終回覆
+        workingSince = Date()
         streamingMessageId = nil
 
         do {
@@ -643,6 +645,7 @@ final class AppModel: ObservableObject {
         } catch {
             streaming = false
             awaitingReply = false
+            workingSince = nil
             if let i = messages.firstIndex(where: { $0.id == userMessage.id }) { messages.remove(at: i) }
             saveTranscript()
             throw error
@@ -663,7 +666,9 @@ final class AppModel: ObservableObject {
             // 2026-10-24 John: A+B 一起做
             // A) 執行中只問 sessions.describe,不再每輪重抓 chat.history(約 15KB/輪 → 0.5KB/輪)
             // B) 輪詢 1.2s → 0.6s,完成後最快約 0.6s 就跳出來
-            for tick in 0..<300 {               // 0.6s × 300 ≈ 3 分鐘
+            // 2026-10-25: 不再設 3 分鐘上限(長任務會讓三點消失)。上限放寬到 ~4 小時,
+            // 正常結束時會被 finishRun 提前收掉。
+            for tick in 0..<24000 {              // 0.6s × 24000 ≈ 4 小時
                 try? await Task.sleep(nanoseconds: 600_000_000)
                 if Task.isCancelled { return }
 
@@ -716,7 +721,7 @@ final class AppModel: ObservableObject {
         Trace.mark("finish.start")
         // 執行結束 ≠ 回覆已寫進歷史:這裡要等到「最後一則是助理訊息」才收三點,
         // 否則會出現「下一題送出時,上一題答案才跳出來」。
-        for _ in 0..<120 {                      // 最多約 60 秒(答案沒到就一直閃)
+        for _ in 0..<1200 {                     // 最多約 10 分鐘(答案沒到就一直閃)
             if let h = try? await client.history(sessionKey: sessionKey, limit: 40), !h.isEmpty {
                 let c = collapsed(h)
                 if let last = c.last, last.role == .assistant {
@@ -728,6 +733,7 @@ final class AppModel: ObservableObject {
                     saveTranscript()
                     streaming = false
                     awaitingReply = false
+                    workingSince = nil
                     return
                 }
             }
@@ -742,6 +748,7 @@ final class AppModel: ObservableObject {
         }
         streaming = false
         awaitingReply = false
+        workingSince = nil
     }
 
     // MARK: - Event stream

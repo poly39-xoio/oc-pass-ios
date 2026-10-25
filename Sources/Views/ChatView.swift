@@ -200,7 +200,7 @@ struct ChatView: View {
                         .id(m.id)
                     }
                     if model.awaitingReply {
-                        HStack { TypingBubble(); Spacer(minLength: 40) }
+                        HStack { TypingBubble(since: model.workingSince); Spacer(minLength: 40) }
                             .id("typing-indicator")
                     }
                     Color.clear.frame(height: 1).id("bottom-anchor")
@@ -454,13 +454,27 @@ struct ChatView: View {
 
 /// 思考中的循環動畫(三個點)
 struct TypingBubble: View {
+    /// When the current run started, so a long task shows elapsed time instead of
+    /// a silent animation that looks idle after a few seconds.
+    var since: Date?
+
     var body: some View {
         TimelineView(.animation(minimumInterval: 0.12)) { ctx in
             let t = ctx.date.timeIntervalSinceReferenceDate
-            HStack(spacing: 5) {
-                ForEach(0..<3, id: \.self) { i in
-                    let wave = 0.35 + 0.65 * max(0, sin(t * 3.2 - Double(i) * 0.7))
-                    Circle().fill(Theme.ink.opacity(wave)).frame(width: 7, height: 7)
+            let elapsed = since.map { ctx.date.timeIntervalSince($0) } ?? 0
+            HStack(spacing: 8) {
+                HStack(spacing: 5) {
+                    ForEach(0..<3, id: \.self) { i in
+                        let wave = 0.35 + 0.65 * max(0, sin(t * 3.2 - Double(i) * 0.7))
+                        Circle().fill(Theme.ink.opacity(wave)).frame(width: 7, height: 7)
+                    }
+                }
+                if let since, elapsed >= 2 {
+                    Text("工作中 " + Self.mmss(elapsed))
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(Theme.ink.opacity(0.55))
+                        .monospacedDigit()
+                        .id(Int(elapsed))
                 }
             }
             .padding(.horizontal, 14)
@@ -468,6 +482,14 @@ struct TypingBubble: View {
             .background(Theme.panel)
             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
+    }
+
+    private static func mmss(_ seconds: Double) -> String {
+        let total = Int(seconds.rounded())
+        let m = total / 60
+        let s = total % 60
+        if m >= 60 { return String(format: "%d:%02d:%02d", m / 60, m % 60, s) }
+        return String(format: "%d:%02d", m, s)
     }
 }
 
