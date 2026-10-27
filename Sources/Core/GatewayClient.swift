@@ -197,6 +197,41 @@ final class GatewayClient {
         if text.isEmpty, let b = m["content"] as? [String: Any], let s = b["text"] as? String {
             text = s
         }
+        // SD/OC: 附件解析(gateway 會帶 attachments 陣列,或 content 內的 image/file block)
+        var remoteURLs: [String] = []
+        var remoteKinds: [String] = []
+        if let atts = m["attachments"] as? [[String: Any]] {
+            for att in atts {
+                let url = (att["url"] as? String) ?? (att["mediaUrl"] as? String) ?? (att["filePath"] as? String) ?? ""
+                if !url.isEmpty {
+                    remoteURLs.append(url)
+                    remoteKinds.append((att["kind"] as? String) ?? (att["type"] as? String) ?? (att["contentType"] as? String) ?? "?")
+                }
+            }
+        }
+        if remoteURLs.isEmpty, let blocks = m["content"] as? [[String: Any]] {
+            for b in blocks {
+                let kind = (b["type"] as? String) ?? ""
+                if kind == "image" || kind == "file" || kind == "attachment" {
+                    if let url = (b["url"] as? String) ?? (b["mediaUrl"] as? String) {
+                        remoteURLs.append(url)
+                        remoteKinds.append(kind)
+                    } else if let data = b["data"] as? String, !data.isEmpty {
+                        remoteURLs.append("inline:" + String(data.prefix(24)))
+                        remoteKinds.append(kind + "-base64")
+                    }
+                }
+            }
+        }
+        if !remoteURLs.isEmpty {
+            Trace.mark("media.found urls=\(remoteURLs.count) kinds=\(remoteKinds.joined(separator: ",")) first=\(remoteURLs[0].prefix(60))")
+            if let atts = m["attachments"] as? [[String: Any]], let first = atts.first,
+               let data = try? JSONSerialization.data(withJSONObject: first, options: []),
+               let json = String(data: data, encoding: .utf8) {
+                Trace.mark("media.raw \(String(json.prefix(400)))")
+            }
+        }
+
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty {
             // 只送圖片/檔案時,gateway 歷史裡的文字是空的;保留這一列,本機附件才接得回去
@@ -208,6 +243,10 @@ final class GatewayClient {
         let ts = Self.parseTimestamp(m)
         var msg = ChatMessage(role: role, text: trimmed, createdAt: ts ?? Date())
         msg.hasTimestamp = (ts != nil)
+        if !remoteURLs.isEmpty {
+            msg.remoteMediaURLs = remoteURLs
+            msg.remoteMediaKinds = remoteKinds
+        }
         return msg
     }
 

@@ -34,6 +34,10 @@ struct ChatMessage: Identifiable, Codable, Equatable {
     var hidden: Bool? = nil
     /// 歷史訊息有沒有帶時間(沒有就不顯示假時間)
     var hasTimestamp: Bool? = nil
+    /// gateway 回傳的附件位址(media://inbound/<id> 或 http url),用來非同步下載
+    var remoteMediaURLs: [String]? = nil
+    /// 附件原始型別(除錯用)
+    var remoteMediaKinds: [String]? = nil
 
     var isHidden: Bool { hidden == true }
 }
