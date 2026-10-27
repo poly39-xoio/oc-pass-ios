@@ -162,6 +162,7 @@ private let EN: [String: String] = [
     "配對碼沒有 token,請手動輸入": "The pairing code has no token — please paste a token manually.",
     "配對完成但沒拿到裝置憑證": "Pairing finished but no device credential was returned.",
     "Gateway 版本過舊(%@),請更新後再使用": "Gateway version is too old (%@). Please update it before using this app.",
+    "Gateway 版本較舊(%@)，部分功能可能無法使用。更新指令：openclaw update --yes": "Your gateway is running an older version (%@). Some features may not work. Update with: openclaw update --yes",
     "讀取歷史失敗:%@": "Failed to load history: %@",
     "執行任務失敗:": "Job failed: ",
     "沒有選取會話": "No chat selected.",

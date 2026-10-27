@@ -42,7 +42,15 @@ final class AppModel: ObservableObject {
     @Published var hiddenKeys: Set<String> = Set(UserDefaults.standard.stringArray(forKey: "ocpass.hiddenKeys") ?? [])
     @Published var sessionError: String?
     @Published var gatewayVersion: String = ""
-    @Published var versionWarning: String?
+    /// 連到的 gateway 版本(原始字串);顯示文字在 versionWarning 即時計算,切語言才會跟著變
+    @Published var gatewayVersionRaw: String?
+
+    var versionWarning: String? {
+        guard let v = self.gatewayVersionRaw, Self.isTooOld(v) else {
+            return nil
+        }
+        return String(format: L("Gateway 版本較舊(%@)，部分功能可能無法使用。更新指令：openclaw update --yes"), v)
+    }
     /// 最低支援的 gateway 版本(協議 v4 的穩定起點)
     static let minGatewayVersion = "2026.6.0"
     /// 使用者自己設定的名字(存在 UserDefaults),用來顯示「你是誰」而不是 Telegram 帳號
@@ -269,7 +277,7 @@ final class AppModel: ObservableObject {
                 currentGateway = Gateway(name: url.host ?? "gateway", url: url, lastSeen: Date())
                 if let v = hello.serverVersion, !v.isEmpty {
                     gatewayVersion = v
-                    versionWarning = Self.isTooOld(v) ? String(format: L("Gateway 版本過舊(%@),請更新後再使用"), v) : nil
+                    gatewayVersionRaw = v
                 }
                 reconnectAttempt = 0
                 state = .ready
