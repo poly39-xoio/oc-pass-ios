@@ -303,6 +303,14 @@ final class AppModel: ObservableObject {
         gatewayToken = stored.token
         authMode = (stored.kind == "device") ? .device(stored.token) : .shared(stored.token)
         openConnection()
+        // relay 通道:存下來的憑證一旦失效,自動重領 bootstrap token(使用者不必做任何事)
+        if stored.url.absoluteString.contains("/relay/") {
+            Task { [weak self] in
+                try? await Task.sleep(nanoseconds: 4_000_000_000)
+                guard let self, !self.isConnected else { return }
+                self.startTrialWatch()
+            }
+        }
     }
 
     /// 每 25 秒 ping 一次;連線已經死掉但 socket 沒觸發 error 時,由這裡發現並重連
@@ -972,7 +980,10 @@ final class AppModel: ObservableObject {
                     await MainActor.run {
                         self.connectBootstrap(url: appURL, bootstrapToken: boot)
                     }
-                    return
+                    // 一次性憑證可能已被用掉/過期 → 等一拍,沒連上就再領新的(迴圈內重試)
+                    try? await Task.sleep(nanoseconds: 3_000_000_000)
+                    if await MainActor.run(body: { self.isConnected }) { return }
+                    continue
                 }
                 if let code = await Self.fetchPairCode(channel: ch, secret: sec) {
                     await MainActor.run {
