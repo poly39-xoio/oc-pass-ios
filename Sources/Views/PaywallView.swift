@@ -74,6 +74,9 @@ struct PaywallView: View {
     private func productRow(_ p: Product) -> some View {
         let isYearly = p.id == Store.yearly
         let busy = store.purchasingProductID == p.id
+        // 年繳是深色 accent 底 → 白字；月繳是淺色 panel 底 → 墨字（純白會看不見）
+        let fg: Color = isYearly ? .white : Theme.ink
+        let fgDim: Color = isYearly ? .white.opacity(0.7) : Theme.ink.opacity(0.65)
         return Button {
             Task { await store.buy(p) }
         } label: {
@@ -81,21 +84,21 @@ struct PaywallView: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(isYearly ? L("年繳") : L("月繳"))
                         .font(Theme.ui(15, .bold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(fg)
                     Text(isYearly ? L("平均 $2.08/月，省 30%") : L("每月自動續訂"))
                         .font(Theme.ui(12))
-                        .foregroundStyle(.white.opacity(0.7))
+                        .foregroundStyle(fgDim)
                 }
                 Spacer()
                 Text(p.displayPrice)
                     .font(Theme.ui(16, .bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(fg)
                 if let sub = p.subscription, let offer = sub.introductoryOffer {
                     Text(String(format: L("前 %d 天免費"), offer.period.value))
                         .font(Theme.ui(10, .bold))
                         .foregroundStyle(Theme.ink)
                         .padding(.horizontal, 6).padding(.vertical, 3)
-                        .background(Theme.panel)
+                        .background(isYearly ? Theme.panel : Theme.panel2)
                         .clipShape(Capsule())
                 }
             }
@@ -106,7 +109,7 @@ struct PaywallView: View {
             .overlay(alignment: .trailing) {
                 if busy {
                     ProgressView()
-                        .tint(.white)
+                        .tint(fg)
                         .padding(.trailing, 16)
                 }
             }
