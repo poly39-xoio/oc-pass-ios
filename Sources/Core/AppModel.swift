@@ -281,13 +281,16 @@ final class AppModel: ObservableObject {
                 }
                 reconnectAttempt = 0
                 state = .ready
+                relayConnected = true   // 真的連上 gateway 才亮綠勾(不是拿到憑證就亮)
                 startHeartbeat()
                 await refreshSessions()
                 if let cur = currentSession { select(cur) }
             } catch GatewayClient.ClientError.pairingRequired(let id) {
                 state = .pairing(id)
+                relayConnected = false
             } catch {
                 state = .failed(error.localizedDescription)
+                relayConnected = false
             }
         }
     }
@@ -967,14 +970,12 @@ final class AppModel: ObservableObject {
                 if let boot = await Self.fetchBootstrapToken(channel: ch, secret: sec),
                    let appURL = Self.parseRelayURL(ch + "?k=" + sec) {
                     await MainActor.run {
-                        self.relayConnected = true
                         self.connectBootstrap(url: appURL, bootstrapToken: boot)
                     }
                     return
                 }
                 if let code = await Self.fetchPairCode(channel: ch, secret: sec) {
                     await MainActor.run {
-                        self.relayConnected = true
                         self.connectRelay(code: code)
                     }
                     return
