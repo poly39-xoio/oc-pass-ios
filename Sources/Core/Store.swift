@@ -12,6 +12,8 @@ final class Store: ObservableObject {
     @Published var subscribed = false
     @Published var loading = false
     @Published var error: String?
+    /// 正在進行的購買(商品 id),用來在 UI 顯示 spinner 並避免重複點擊
+    @Published var purchasingProductID: String?
 
     private var updates: Task<Void, Never>?
 
@@ -43,19 +45,31 @@ final class Store: ObservableObject {
     }
 
     func buy(_ product: Product) async {
+        guard purchasingProductID == nil else { return }
+        purchasingProductID = product.id
+        error = nil
+        defer { purchasingProductID = nil }
         do {
             let result = try await product.purchase()
             switch result {
             case .success(let verification):
-                if case .verified(let tx) = verification { await tx.finish() }
-                await refreshEntitlement()
-            case .userCancelled, .pending:
+                switch verification {
+                case .verified(let tx):
+                    await tx.finish()
+                    await refreshEntitlement()
+                case .unverified(_, let failure):
+                    self.error = L("購買驗證失敗") + ": " + failure.localizedDescription
+                }
+            case .pending:
+                // 家長同意 / SCA 之類需要外部授權:一定要讓使用者知道
+                self.error = L("購買待處理:請依 Apple 提示完成授權後再回來")
+            case .userCancelled:
                 break
             @unknown default:
                 break
             }
         } catch {
-            self.error = error.localizedDescription
+            self.error = L("購買失敗") + ": " + error.localizedDescription
         }
     }
 

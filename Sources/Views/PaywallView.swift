@@ -41,6 +41,13 @@ struct PaywallView: View {
                                 .foregroundStyle(.white.opacity(0.6))
                         }
 
+                        // 購買失敗 / 待處理:一定要有看得見的回應(Apple 2.1(b))
+                        if let err = store.error, !store.products.isEmpty {
+                            Text(err)
+                                .font(Theme.ui(12))
+                                .foregroundStyle(Theme.warn)
+                        }
+
                         Button {
                             Task { await store.restore() }
                         } label: {
@@ -66,6 +73,7 @@ struct PaywallView: View {
 
     private func productRow(_ p: Product) -> some View {
         let isYearly = p.id == Store.yearly
+        let busy = store.purchasingProductID == p.id
         return Button {
             Task { await store.buy(p) }
         } label: {
@@ -95,7 +103,16 @@ struct PaywallView: View {
             .frame(maxWidth: .infinity)
             .background(isYearly ? Theme.accent : Theme.panel)
             .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(alignment: .trailing) {
+                if busy {
+                    ProgressView()
+                        .tint(.white)
+                        .padding(.trailing, 16)
+                }
+            }
         }
+        .disabled(store.purchasingProductID != nil)
+        .opacity(store.purchasingProductID != nil && !busy ? 0.55 : 1.0)
     }
 
     private func bigButton(_ title: String, action: @escaping () -> Void) -> some View {
