@@ -6,7 +6,6 @@ import UniformTypeIdentifiers
 
 struct ChatView: View {
     @EnvironmentObject var model: AppModel
-    @State private var dictationText: String?
     @State private var pending: [PendingAttachment] = []
     @State private var showAttachMenu = false
     @State private var attachChoice: AttachChoice?
@@ -14,8 +13,6 @@ struct ChatView: View {
     @State private var showFileImporter = false
     @State private var photoItems: [PhotosPickerItem] = []
     @State private var sizeWarning: String?
-    @StateObject private var speech = SpeechInput()
-    @State private var dictationBase = ""
     @State private var scrollTask: Task<Void, Never>?
     @State private var draftSaveTask: Task<Void, Never>?
     @State private var showUsagePaywall = false
@@ -49,10 +46,10 @@ struct ChatView: View {
             if let img = zoomImage { ZoomViewer(image: img) }
         }
         .sheet(isPresented: $showUsagePaywall) { PaywallView() }
-        .alert(L("太大"), isPresented: Binding(get: { sizeWarning != nil || speech.error != nil }, set: { if !$0 { sizeWarning = nil; speech.error = nil } })) {
+        .alert(L("太大"), isPresented: Binding(get: { sizeWarning != nil }, set: { if !$0 { sizeWarning = nil } })) {
             Button(L("完成")) { sizeWarning = nil }
         } message: {
-            Text(sizeWarning ?? speech.error ?? "")
+            Text(sizeWarning ?? "")
         }
         .onAppear {
             restoreDraft()
@@ -61,10 +58,6 @@ struct ChatView: View {
         .onChange(of: model.currentSession?.id) { _, _ in restoreDraft() }
         .onChange(of: showAttachMenu) { _, open in
             if !open { openPendingPicker() }
-        }
-        .onChange(of: speech.transcript) { _, t in
-            guard speech.isRecording, !t.isEmpty else { return }
-            dictationText = dictationBase.isEmpty ? t : dictationBase + " " + t
         }
     }
 
@@ -315,10 +308,7 @@ struct ChatView: View {
     // MARK: - Input
 
     private var inputBar: some View {
-        ComposerBar(injectedText: dictationText,
-                    micActive: speech.isRecording,
-                    onAttach: { withAnimation(.easeOut(duration: 0.16)) { showAttachMenu = true } },
-                    onMic: { toggleDictation() },
+        ComposerBar(onAttach: { withAnimation(.easeOut(duration: 0.16)) { showAttachMenu = true } },
                     onSend: { txt in sendNow(text: txt) },
                     draftKey: draftKey)
         .id(draftKey)
@@ -361,28 +351,17 @@ struct ChatView: View {
         }
     }
 
-    private func toggleDictation() {
-        if speech.isRecording {
-            speech.stop()
-        } else {
-            dictationBase = ""
-            speech.start()
-        }
-    }
-
     /// 文字由 ComposerBar 持有(打字不再重繪整個列表);這裡只負責送出
     private func sendNow(text: String) {
         let files = pending
-        if speech.isRecording { speech.stop() }
         if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && files.isEmpty { return }
         pending = []
         Task {
             do {
                 try await model.sendAsync(text, attachments: files)
             } catch {
-                // 送不出去 → 把文字與附件還原,不要讓字消失
+                // 送不出去 → 附件還原;文字由使用者重打(輸入框已由 ComposerBar 管理)
                 pending = files
-                dictationText = text
             }
         }
     }

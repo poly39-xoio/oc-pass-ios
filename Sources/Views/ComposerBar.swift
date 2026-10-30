@@ -8,11 +8,7 @@ import UIKit
 /// 訊息越多越慢。把這些狀態搬進這個子視圖後,打字只重繪輸入列,
 /// 訊息列表(VStack)完全不動 → 又快又不會像 LazyVStack 那樣「送出後跳掉」。
 struct ComposerBar: View {
-    /// 外部注入的文字(語音聽寫):值改變時會追加到輸入框
-    var injectedText: String?
-    var micActive: Bool
     var onAttach: () -> Void
-    var onMic: () -> Void
     var onSend: (String) -> Void
     var draftKey: String
 
@@ -20,6 +16,8 @@ struct ComposerBar: View {
     @State private var height: CGFloat = Theme.inputMin
     @State private var focused = false
     @State private var saveTask: Task<Void, Never>?
+    /// 語音聽寫搬進來:transcript 每秒更新多次,留在 ChatView 會讓整個列表重繪 → 語音很慢
+    @StateObject private var speech = SpeechInput()
 
     private var canSend: Bool { !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
 
@@ -32,10 +30,10 @@ struct ComposerBar: View {
                     .frame(width: 30, height: 30)
             }
 
-            Button(action: onMic) {
-                Image(systemName: micActive ? "mic.circle.fill" : "mic")
+            Button { speech.toggle() } label: {
+                Image(systemName: speech.isRecording ? "mic.circle.fill" : "mic")
                     .font(.system(size: 19, weight: .semibold))
-                    .foregroundStyle(micActive ? Theme.warn : .white)
+                    .foregroundStyle(speech.isRecording ? Theme.warn : .white)
                     .frame(width: 30, height: 30)
             }
 
@@ -63,8 +61,8 @@ struct ComposerBar: View {
         .padding(.vertical, 5)
         .onAppear { text = Self.load(draftKey) }
         .onChange(of: text) { _, v in scheduleSave(v) }
-        .onChange(of: injectedText) { _, v in
-            guard let v, !v.isEmpty else { return }
+        .onChange(of: speech.transcript) { _, v in
+            guard speech.isRecording, !v.isEmpty else { return }
             text = v
         }
         .onDisappear { saveNow(text) }
