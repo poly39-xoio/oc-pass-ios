@@ -997,7 +997,9 @@ final class AppModel: ObservableObject {
     }
 
     static func fetchBootstrapToken(channel: String, secret: String) async -> TokenString? {
-        guard let url = URL(string: "https://xoio.io/relay/status/\(channel)?k=\(secret)") else { return nil }
+        // 2026-10-31: 改用 /mint —— 每次重試都拿一顆當下才有效的新憑證,
+        // 避免重複使用已失效的一次性 bootstrap token(今晚連不上的主因)
+        guard let url = URL(string: "https://xoio.io/relay/mint/\(channel)?k=\(secret)") else { return nil }
         guard let (data, resp) = try? await URLSession.shared.data(from: url),
               (resp as? HTTPURLResponse)?.statusCode == 200,
               let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
