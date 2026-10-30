@@ -37,7 +37,7 @@ final class AppModel: ObservableObject {
     /// 免費額度狀態(用量/額度/試用到期) → 用來提示使用者,而不是無聲降速
     @Published var relayUsage: RelayUsage?
     private var trialWatch: Task<Void, Never>?
-    private var usageTask: Task<Void, Never>?
+    var usageTask: Task<Void, Never>?   // RelayUsage.swift 的 extension 會用到
     @Published var trialExpiresAt: Date?
     @Published var trialError: String?
     @Published var trialLoading = false
