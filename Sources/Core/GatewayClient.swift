@@ -22,15 +22,15 @@ enum AuthMode {
     }
 
     var role: String {
-        switch self {
-        case .bootstrap: return "node"
-        default: return "operator"
-        }
+        // 2026-10-31: bootstrap 曾用 "node" → gateway 發的是 node 權限的 deviceToken,
+        // 之後用 operator 權限重連必定被拒(這就是「掃了 QR 也連不上」的原因)。
+        // 一律以 operator 申請,才能取得可用的 operator token。
+        return "operator"
     }
 
     var scopes: [String] {
         switch self {
-        case .bootstrap: return []
+        case .bootstrap: return ["operator.read", "operator.write"]
         case .shared: return ["operator.admin"]
         case .device: return ["operator.read", "operator.write"]
         }
