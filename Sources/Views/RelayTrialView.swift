@@ -6,6 +6,7 @@ struct RelayTrialView: View {
     @EnvironmentObject var model: AppModel
     @Environment(\.dismiss) private var dismiss
     @State private var copied = false
+    @State private var showPaywall = false
 
     var body: some View {
         NavigationStack {
@@ -15,9 +16,24 @@ struct RelayTrialView: View {
                     VStack(alignment: .leading, spacing: 16) {
                         SheetHeader(title: L("一鍵連線"), onDone: { dismiss() })
 
-                        Text(L("免費方案：100MB/月 · 需要更多可訂閱 $2.99/月 或 $24.99/年（前 3 天免費）"))
-                            .font(Theme.ui(12))
-                            .foregroundStyle(.white.opacity(0.7))
+                        // 價格不能只是純文字：App Review 2.1(b) 正是在這一頁點不到才退件
+                        Button {
+                            showPaywall = true
+                        } label: {
+                            HStack(spacing: 8) {
+                                Text(L("免費方案：100MB/月 · 需要更多可訂閱 $2.99/月 或 $24.99/年（前 3 天免費）"))
+                                    .font(Theme.ui(12))
+                                    .foregroundStyle(.white.opacity(0.7))
+                                    .multilineTextAlignment(.leading)
+                                Text(L("訂閱"))
+                                    .font(Theme.ui(11, .bold))
+                                    .foregroundStyle(Theme.ink)
+                                    .padding(.horizontal, 8).padding(.vertical, 4)
+                                    .background(Theme.panel)
+                                    .clipShape(Capsule())
+                            }
+                        }
+                        .buttonStyle(.plain)
 
                         if model.trialLoading {
                             HStack(spacing: 8) {
@@ -84,6 +100,7 @@ struct RelayTrialView: View {
             if model.trialCommand == nil { model.startTrial() }
             else if model.trialChannel != nil { model.startTrialWatch() }
         }
+        .sheet(isPresented: $showPaywall) { PaywallView() }
     }
 
     private func stepText(_ n: String, _ text: String) -> some View {
