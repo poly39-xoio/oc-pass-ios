@@ -18,6 +18,7 @@ struct ChatView: View {
     @State private var dictationBase = ""
     @State private var scrollTask: Task<Void, Never>?
     @State private var draftSaveTask: Task<Void, Never>?
+    @State private var showUsagePaywall = false
     @State private var zoomImage: UIImage?
 
     private var draftKey: String { "ocpass.draft." + (model.currentSession?.id ?? "none") }
@@ -30,6 +31,9 @@ struct ChatView: View {
                 header
                 if case .connecting = model.state { reconnectingBanner }
                 if let warn = model.versionWarning { versionBanner(warn) }
+                if let usage = model.relayUsage, usage.isTrialExpired || usage.isOverQuota || usage.isNearLimit {
+                    usageBanner(usage)
+                }
                 messageList
                 attachmentChips
                 inputBar
@@ -44,6 +48,7 @@ struct ChatView: View {
         .fullScreenCover(isPresented: Binding(get: { zoomImage != nil }, set: { if !$0 { zoomImage = nil } })) {
             if let img = zoomImage { ZoomViewer(image: img) }
         }
+        .sheet(isPresented: $showUsagePaywall) { PaywallView() }
         .alert(L("太大"), isPresented: Binding(get: { sizeWarning != nil || speech.error != nil }, set: { if !$0 { sizeWarning = nil; speech.error = nil } })) {
             Button(L("完成")) { sizeWarning = nil }
         } message: {
@@ -153,6 +158,32 @@ struct ChatView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 12).padding(.vertical, 6)
         .background(Theme.warn.opacity(0.75))
+    }
+
+    /// 免費額度 / 試用到期提示(2026-10-31):使用者要被告知降速或到期原因
+    private func usageBanner(_ usage: RelayUsage) -> some View {
+        let text: String
+        if usage.isTrialExpired {
+            text = L("免費期已結束,訂閱後繼續使用")
+        } else if usage.isOverQuota {
+            text = L("已達免費額度,速度受限(16KB/s)")
+        } else {
+            text = String(format: L("剩 %d MB,可訂閱升級"), usage.remainingMB)
+        }
+        return Button {
+            showUsagePaywall = true
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "bolt.horizontal.circle.fill").font(.system(size: 12))
+                Text(text).font(Theme.ui(11, .medium)).lineLimit(2)
+                Spacer(minLength: 4)
+                Text(L("升級")).font(Theme.ui(11, .bold)).underline()
+            }
+            .foregroundStyle(Theme.ink)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 12).padding(.vertical, 6)
+            .background(Theme.warn.opacity(0.75))
+        }
     }
 
     private var reconnectingBanner: some View {

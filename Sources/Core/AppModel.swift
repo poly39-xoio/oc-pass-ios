@@ -34,7 +34,10 @@ final class AppModel: ObservableObject {
     @Published var trialChannel: String?
     @Published var trialSecret: String?
     @Published var relayConnected = false
+    /// 免費額度狀態(用量/額度/試用到期) → 用來提示使用者,而不是無聲降速
+    @Published var relayUsage: RelayUsage?
     private var trialWatch: Task<Void, Never>?
+    private var usageTask: Task<Void, Never>?
     @Published var trialExpiresAt: Date?
     @Published var trialError: String?
     @Published var trialLoading = false
@@ -282,6 +285,7 @@ final class AppModel: ObservableObject {
                 reconnectAttempt = 0
                 state = .ready
                 relayConnected = true   // 真的連上 gateway 才亮綠勾(不是拿到憑證就亮)
+                startUsageWatch()       // 開始追蹤免費額度/試用到期,才能主動提示
                 startHeartbeat()
                 await refreshSessions()
                 if let cur = currentSession { select(cur) }

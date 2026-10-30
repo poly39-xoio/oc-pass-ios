@@ -91,6 +91,10 @@ private let EN: [String: String] = [
     "訂閱 / 還原購買": "Subscribe / Restore",
     "訂閱 Relay": "Relay subscription",
     "訂閱": "Subscribe",
+    "升級": "Upgrade",
+    "免費期已結束,訂閱後繼續使用": "Free period ended — subscribe to keep using it",
+    "已達免費額度,速度受限(16KB/s)": "Free quota reached — speed limited (16 KB/s)",
+    "剩 %d MB,可訂閱升級": "%d MB left — upgrade with a subscription",
     "前 3 天免費，之後自動續訂（1GB/月）。可隨時在 Apple ID 設定取消。":
         "3 days free, then auto-renews (1 GB/month). Cancel anytime in Apple ID settings.",
     "已訂閱，Relay 已解鎖": "Subscribed — relay unlocked",
