@@ -19,6 +19,7 @@ struct ChatView: View {
     @StateObject private var speech = SpeechInput()
     @State private var dictationBase = ""
     @State private var scrollTask: Task<Void, Never>?
+    @State private var draftSaveTask: Task<Void, Never>?
     @State private var zoomImage: UIImage?
 
     private var draftKey: String { "ocpass.draft." + (model.currentSession?.id ?? "none") }
@@ -55,7 +56,7 @@ struct ChatView: View {
             Task { await Store.shared.refreshEntitlement() }
         }
         .onChange(of: model.currentSession?.id) { _, _ in restoreDraft() }
-        .onChange(of: draft) { _, v in persistDraft(v) }
+        .onChange(of: draft) { _, v in scheduleDraftSave(v) }
         .onChange(of: showAttachMenu) { _, open in
             if !open { openPendingPicker() }
         }
@@ -90,12 +91,27 @@ struct ChatView: View {
     }
 
     private func persistDraft(_ value: String) {
-        if value.isEmpty {
-            UserDefaults.standard.removeObject(forKey: draftKey)
-            UserDefaults.standard.removeObject(forKey: "ocpass.draft.last")
-        } else {
-            UserDefaults.standard.set(value, forKey: draftKey)
-            UserDefaults.standard.set(value, forKey: "ocpass.draft.last")
+        // 不要在主執行緒做磁碟 I/O:手寫輸入每個字都會觸發,舊版同步寫兩個 key 會卡住鍵盤
+        let key = draftKey
+        DispatchQueue.global(qos: .utility).async {
+            let d = UserDefaults.standard
+            if value.isEmpty {
+                d.removeObject(forKey: key)
+                d.removeObject(forKey: "ocpass.draft.last")
+            } else {
+                d.set(value, forKey: key)
+                d.set(value, forKey: "ocpass.draft.last")
+            }
+        }
+    }
+
+    /// 草稿寫入去抖:停止輸入 0.7 秒後才寫(送出/離開頁面會立即寫)
+    private func scheduleDraftSave(_ value: String) {
+        draftSaveTask?.cancel()
+        draftSaveTask = Task {
+            try? await Task.sleep(nanoseconds: 700_000_000)
+            guard !Task.isCancelled else { return }
+            persistDraft(value)
         }
     }
 
@@ -195,7 +211,7 @@ struct ChatView: View {
         }
         return AnyView(ScrollViewReader { proxy in
             ScrollView {
-                VStack(alignment: .leading, spacing: 10) {
+                LazyVStack(alignment: .leading, spacing: 10) {
                     ForEach(model.messages.filter { !$0.isHidden }) { m in
                         MessageBubble(
                             message: m,

@@ -29,21 +29,24 @@ struct GrowingTextField: UIViewRepresentable {
     func updateUIView(_ tv: UITextView, context: Context) {
         if tv.text != text {
             tv.text = text
-            // 清空後立刻回到單行高度,不等下一次 layout
-            let width = tv.bounds.width > 0 ? tv.bounds.width : 240
-            let fitting = tv.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude)).height
-            let target = clampedHeight(fitting)
-            if abs(height - target) > 0.5 {
-                DispatchQueue.main.async { self.height = target }
-            }
         }
 
-        let width = tv.bounds.width > 0 ? tv.bounds.width : 240
-        let fitting = tv.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude)).height
-        let target = clampedHeight(fitting)
-        tv.isScrollEnabled = fitting > maxHeight
-        if abs(height - target) > 0.5 {
-            DispatchQueue.main.async { self.height = target }
+        // 手寫/注音每輸入一筆都會走到這裡。舊版每次 update 量兩次 sizeThatFits,
+        // 整個文字排版量測在主執行緒上 → 手寫輸入明顯延遲。改成:只量一次,而且
+        // 只有「文字或寬度真的變了」才量,回寫 binding 也去重。
+        let width = tv.bounds.width > 0 ? tv.bounds.width : context.coordinator.lastMeasuredWidth
+        let textChanged = context.coordinator.lastMeasuredText != tv.text
+        let widthChanged = abs(width - context.coordinator.lastMeasuredWidth) > 0.5
+        if width > 0, textChanged || widthChanged {
+            context.coordinator.lastMeasuredWidth = width
+            context.coordinator.lastMeasuredText = tv.text
+            let fitting = tv.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude)).height
+            let target = clampedHeight(fitting)
+            tv.isScrollEnabled = fitting > maxHeight
+            if abs(height - target) > 0.5, abs(context.coordinator.lastAppliedHeight - target) > 0.5 {
+                context.coordinator.lastAppliedHeight = target
+                DispatchQueue.main.async { self.height = target }
+            }
         }
 
         if focused != tv.isFirstResponder {
@@ -65,6 +68,9 @@ struct GrowingTextField: UIViewRepresentable {
 
     final class Coordinator: NSObject, UITextViewDelegate {
         private let parent: GrowingTextField
+        var lastMeasuredWidth: CGFloat = 0
+        var lastMeasuredText: String = ""
+        var lastAppliedHeight: CGFloat = 0
         init(_ parent: GrowingTextField) { self.parent = parent }
 
         func textViewDidChange(_ textView: UITextView) {
