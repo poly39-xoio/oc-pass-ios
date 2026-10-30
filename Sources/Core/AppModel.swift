@@ -962,6 +962,16 @@ final class AppModel: ObservableObject {
             guard let self else { return }
             for _ in 0..<150 {                 // 最多約 5 分鐘
                 if Task.isCancelled { return }
+                // 2026-10-30: 電腦端 tunnel 會把一次性 bootstrap token 公告到 /relay/status
+                // → App 自己領取就能連上，使用者不必貼任何配對碼。
+                if let boot = await Self.fetchBootstrapToken(channel: ch, secret: sec),
+                   let appURL = Self.parseRelayURL(ch + "?k=" + sec) {
+                    await MainActor.run {
+                        self.relayConnected = true
+                        self.connectBootstrap(url: appURL, bootstrapToken: boot)
+                    }
+                    return
+                }
                 if let code = await Self.fetchPairCode(channel: ch, secret: sec) {
                     await MainActor.run {
                         self.relayConnected = true
@@ -972,6 +982,15 @@ final class AppModel: ObservableObject {
                 try? await Task.sleep(nanoseconds: 2_000_000_000)
             }
         }
+    }
+
+    static func fetchBootstrapToken(channel: String, secret: String) async -> TokenString? {
+        guard let url = URL(string: "https://xoio.io/relay/status/\(channel)?k=\(secret)") else { return nil }
+        guard let (data, resp) = try? await URLSession.shared.data(from: url),
+              (resp as? HTTPURLResponse)?.statusCode == 200,
+              let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let t = obj["bootstrapToken"] as? String, !t.isEmpty else { return nil }
+        return t
     }
 
     static func fetchPairCode(channel: String, secret: String) async -> String? {
