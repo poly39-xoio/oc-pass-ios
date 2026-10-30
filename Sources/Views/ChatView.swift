@@ -6,9 +6,7 @@ import UniformTypeIdentifiers
 
 struct ChatView: View {
     @EnvironmentObject var model: AppModel
-    @State private var draft = ""
-    @State private var inputHeight: CGFloat = Theme.inputMin
-    @State private var inputFocused = false
+    @State private var dictationText: String?
     @State private var pending: [PendingAttachment] = []
     @State private var showAttachMenu = false
     @State private var attachChoice: AttachChoice?
@@ -56,13 +54,12 @@ struct ChatView: View {
             Task { await Store.shared.refreshEntitlement() }
         }
         .onChange(of: model.currentSession?.id) { _, _ in restoreDraft() }
-        .onChange(of: draft) { _, v in scheduleDraftSave(v) }
         .onChange(of: showAttachMenu) { _, open in
             if !open { openPendingPicker() }
         }
         .onChange(of: speech.transcript) { _, t in
             guard speech.isRecording, !t.isEmpty else { return }
-            draft = dictationBase.isEmpty ? t : dictationBase + " " + t
+            dictationText = dictationBase.isEmpty ? t : dictationBase + " " + t
         }
     }
 
@@ -89,38 +86,10 @@ struct ChatView: View {
         }
     }
 
-    /// 離開 App / 切換 session 都還在
-    private func restoreDraft() {
-        let perSession = UserDefaults.standard.string(forKey: draftKey) ?? ""
-        let last = UserDefaults.standard.string(forKey: "ocpass.draft.last") ?? ""
-        draft = perSession.isEmpty ? last : perSession
-        inputHeight = Theme.inputMin
-    }
+    /// 草稿由 ComposerBar 依 draftKey 自行載入(切 session 會重建該視圖)
+    private func restoreDraft() {}
 
-    private func persistDraft(_ value: String) {
-        // 不要在主執行緒做磁碟 I/O:手寫輸入每個字都會觸發,舊版同步寫兩個 key 會卡住鍵盤
-        let key = draftKey
-        DispatchQueue.global(qos: .utility).async {
-            let d = UserDefaults.standard
-            if value.isEmpty {
-                d.removeObject(forKey: key)
-                d.removeObject(forKey: "ocpass.draft.last")
-            } else {
-                d.set(value, forKey: key)
-                d.set(value, forKey: "ocpass.draft.last")
-            }
-        }
-    }
-
-    /// 草稿寫入去抖:停止輸入 0.7 秒後才寫(送出/離開頁面會立即寫)
-    private func scheduleDraftSave(_ value: String) {
-        draftSaveTask?.cancel()
-        draftSaveTask = Task {
-            try? await Task.sleep(nanoseconds: 700_000_000)
-            guard !Task.isCancelled else { return }
-            persistDraft(value)
-        }
-    }
+    private func persistDraft(_ value: String) {}
 
     /// 直接從最上層 VC 呈現分享面板(避免包在 SwiftUI .sheet 裡偶發空白頁)
     private func presentShare(_ items: [Any]) {
@@ -244,7 +213,7 @@ struct ChatView: View {
             .defaultScrollAnchor(.bottom)
             .scrollDismissesKeyboard(.interactively)
             .contentShape(Rectangle())
-            .onTapGesture { inputFocused = false }   // 點空白處收起鍵盤(像 Telegram)
+            .onTapGesture { UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil) }   // 點空白處收起鍵盤(像 Telegram)
             .onAppear { scrollToBottom(proxy, delay: 0.35) }
             .onChange(of: model.state) { _, newState in
                 if case .ready = newState { scrollToBottom(proxy, delay: 0.45) }
@@ -315,41 +284,13 @@ struct ChatView: View {
     // MARK: - Input
 
     private var inputBar: some View {
-        HStack(alignment: .bottom, spacing: 8) {
-            Button {
-                withAnimation(.easeOut(duration: 0.16)) { showAttachMenu = true }
-            } label: {
-                Image(systemName: "paperclip")
-                    .font(.system(size: 19, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .frame(width: 30, height: 30)
-            }
-
-            Button {
-                toggleDictation()
-            } label: {
-                Image(systemName: speech.isRecording ? "mic.circle.fill" : "mic")
-                    .font(.system(size: 19, weight: .semibold))
-                    .foregroundStyle(speech.isRecording ? Theme.warn : .white)
-                    .frame(width: 30, height: 30)
-            }
-
-            GrowingTextField(text: $draft, height: $inputHeight, focused: $inputFocused,
-                             minHeight: Theme.inputMin, maxHeight: Theme.inputMax)
-                .frame(height: inputHeight)
-                .padding(.horizontal, 10)
-                .background(Theme.panel)
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-
-            Button {
-                sendNow()
-            } label: {
-                Image(systemName: "arrow.up.circle.fill")
-                    .font(.system(size: 27))
-                    .foregroundStyle(canSend ? Theme.accent : Theme.muted.opacity(0.6))
-            }
-            .disabled(!canSend)
-        }
+        ComposerBar(injectedText: dictationText,
+                    micActive: speech.isRecording,
+                    onAttach: { withAnimation(.easeOut(duration: 0.16)) { showAttachMenu = true } },
+                    onMic: { toggleDictation() },
+                    onSend: { txt in sendNow(text: txt) },
+                    draftKey: draftKey)
+        .id(draftKey)
         .padding(.horizontal, 12)
         .padding(.vertical, 5)
         .photosPicker(isPresented: $showPhotoPicker, selection: $photoItems, maxSelectionCount: 6, matching: .images)
@@ -389,37 +330,28 @@ struct ChatView: View {
         }
     }
 
-    private var canSend: Bool {
-        !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || !pending.isEmpty
-    }
-
     private func toggleDictation() {
         if speech.isRecording {
             speech.stop()
         } else {
-            dictationBase = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+            dictationBase = ""
             speech.start()
         }
     }
 
-    private func sendNow() {
-        guard canSend else { return }
-        let text = draft
+    /// 文字由 ComposerBar 持有(打字不再重繪整個列表);這裡只負責送出
+    private func sendNow(text: String) {
         let files = pending
-        // 先清空 UI,再送出(避免文字殘留在輸入框、框不縮回)
         if speech.isRecording { speech.stop() }
-        draft = ""
+        if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && files.isEmpty { return }
         pending = []
-        inputHeight = Theme.inputMin
-        persistDraft("")
         Task {
             do {
                 try await model.sendAsync(text, attachments: files)
             } catch {
-                // 送不出去 → 把文字與附件還原,不要讓你的字消失
-                draft = text
+                // 送不出去 → 把文字與附件還原,不要讓字消失
                 pending = files
-                persistDraft(text)
+                dictationText = text
             }
         }
     }
