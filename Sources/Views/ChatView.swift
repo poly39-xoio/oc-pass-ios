@@ -79,6 +79,13 @@ struct ChatView: View {
             var t = Transaction()
             t.disablesAnimations = true
             withTransaction(t) { proxy.scrollTo(anchor, anchor: .bottom) }
+            // LazyVStack 的列高度是延遲計算的:送出後 content 高度會再變一次,
+            // 只捲兩次會在第二次佈局後「跳掉」。再補一次(無動畫)把它鎖回底部。
+            try? await Task.sleep(nanoseconds: 350_000_000)
+            if Task.isCancelled { return }
+            var t2 = Transaction()
+            t2.disablesAnimations = true
+            withTransaction(t2) { proxy.scrollTo(anchor, anchor: .bottom) }
         }
     }
 
