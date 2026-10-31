@@ -31,22 +31,15 @@ struct GrowingTextField: UIViewRepresentable {
             tv.text = text
         }
 
-        // 手寫/注音每輸入一筆都會走到這裡。舊版每次 update 量兩次 sizeThatFits,
-        // 整個文字排版量測在主執行緒上 → 手寫輸入明顯延遲。改成:只量一次,而且
-        // 只有「文字或寬度真的變了」才量,回寫 binding 也去重。
-        let width = tv.bounds.width > 0 ? tv.bounds.width : context.coordinator.lastMeasuredWidth
-        let textChanged = context.coordinator.lastMeasuredText != tv.text
-        let widthChanged = abs(width - context.coordinator.lastMeasuredWidth) > 0.5
-        if width > 0, textChanged || widthChanged {
-            context.coordinator.lastMeasuredWidth = width
-            context.coordinator.lastMeasuredText = tv.text
-            let fitting = tv.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude)).height
-            let target = clampedHeight(fitting)
-            tv.isScrollEnabled = fitting > maxHeight
-            if abs(height - target) > 0.5, abs(context.coordinator.lastAppliedHeight - target) > 0.5 {
-                context.coordinator.lastAppliedHeight = target
-                DispatchQueue.main.async { self.height = target }
-            }
+        // 每次都量一次(只量一次,成本可接受),但只在高度真的變了才回寫 binding。
+        // 2026-10-31 修正:先前加了「文字/寬度沒變就跳過量測」的判斷,某些時機
+        // (寬度還沒量到)整個跳過 → 輸入框卡在單行高度,第二行之後被裁掉看不到。
+        let width = tv.bounds.width > 0 ? tv.bounds.width : 240
+        let fitting = tv.sizeThatFits(CGSize(width: width, height: .greatestFiniteMagnitude)).height
+        let target = clampedHeight(fitting)
+        tv.isScrollEnabled = fitting > maxHeight
+        if abs(height - target) > 0.5 {
+            DispatchQueue.main.async { self.height = target }
         }
 
         if focused != tv.isFirstResponder {
